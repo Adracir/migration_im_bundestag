@@ -1,0 +1,7 @@
+type;text
+beginning;(Die Sitzung wird um \d{1,2}.*? Uhr)
+beginning;(Beginn.*? \d{1,2}.*?[.,:]\d{1,2})
+beginning;(Beginn.*? \d{1,2} Uhr)
+ending;(\(*Schlu[ßs].*?\d{1,2}.*?[.,:]\d{1,2}.*?\))
+ending;(\(Schlu[ßs].*? der Sitzung[\S\s]*?\d{1,2}.*?\))
+ending;(\(.*?[eE]nde.*? \d{1,2}.*?[.,:]\d{1,2} Uhr.*?\))
