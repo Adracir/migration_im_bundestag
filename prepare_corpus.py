@@ -6,34 +6,47 @@ import datetime
 import time
 from nltk.tokenize import sent_tokenize
 import gensim.utils as gu
+from HanTa import HanoverTagger as ht  # musste erst über pip install hanta installiert werden!
+import sys
+
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SESSION_MARKERS_DIR = ROOT_DIR + '/data/session_markers.csv'
 EPOCHS_DIR = ROOT_DIR + '/data/epochs.csv'
 
 # TODO: rename and document methods in a meaningful way
+# TODO: maybe pickle (store) nested list made in prepare_text_for_embedding_training
 
 
-def prepare_text_for_embedding_training(filename):
+def prepare_text_for_embedding_training(filename, lemmatize=False):
+    print('...starting to prepare text...')
     with open(filename, encoding='utf8') as file:
         s = file.read()
-        # TODO add lemmatization at this point?
         tokenized = []
         sents = sent_tokenize(s, language="german")
+        print(f'{len(sents)} sents prepared')
+        hannover = ht.HanoverTagger('morphmodel_ger.pgz')
         for sent in sents:
-            # TODO: gu.simple_preprocess scheint auch lowercasing zu enthalten -> sinnvoll?
-            #  vielleicht eher spaCy für die Vorverarbeitung benutzen oder Code kopieren und anpassen
-            #  ansonsten funktioniert das aber mega gut. egalisiert auf jeden Fall auch diese Formatierungsfehler
-            #  und entfernt Satzzeichen und Zahlen (das wiederum...?)
-            tokenized.append(gu.simple_preprocess(sent, min_len=1, max_len=40))
+            # code copied from gu.simple_preprocess, only difference: lowercasing not done,
+            # as the cases encode important semantic information in German language
+            # also includes optional lemmatization using hannover lemmatizer
+            tokens = [
+                hannover.analyze(token)[0] if lemmatize else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
+                if 1 <= len(token) <= 40 and not token.startswith('_')
+            ]
+            tokenized.append(tokens)
+            print(f'\rPrepared sent No. {sents.index(sent)}', end="")
         return tokenized
 
 
-def preprocess_text(ep, session, epoch_beginning_date, epoch_ending_date):
+# TODO: reverse/improve logic. maybe include loop in method and only filter by epoch limiting dates
+def extract_debate_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, epoch_ending_date):
     """
-    extract spoken text as well as possible from xml file downloaded from https://www.bundestag.de/services/opendata
+    extract spoken text in parliamentary debate from xml file downloaded from https://www.bundestag.de/services/opendata
     :param ep: election period
     :param session: number of the parliamentary session
+    :param epoch_beginning_date: beginning date for the epoch (50s, 60s, 70s...) to filter
+    :param epoch_ending_date: ending date for the epoch (50s, 60s, 70s...) to filter
     :return: text of the specified session
     """
     # find xml file for specific session in election period
@@ -90,6 +103,11 @@ def extract_text_from_ep_20_xml(session):
 
 
 def pure_text_to_epoch_txt(epoch_id):
+    """
+    create corpus base by extracting text from the different xml files and writing it to txt file for the resp. epoch
+    :param epoch_id: number signifying an historical epoch defined in epochs.csv
+    :return: raw text for the whole epoch
+    """
     # create txt file
     txt_file_path = f'{ROOT_DIR}/data/corpus/epoch{epoch_id}.txt'
     text_to_add = ''
@@ -103,7 +121,7 @@ def pure_text_to_epoch_txt(epoch_id):
     if epoch_id != 8:
         for ep in range(ep_start, ep_end + 1):
             for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/wp{ep}'))+1):
-                session_text = preprocess_text(ep, i, epoch_beginning_date, epoch_ending_date)
+                session_text = extract_debate_for_corpus_before_20th_ep(ep, i, epoch_beginning_date, epoch_ending_date)
                 if session_text:
                     text_to_add = " ".join([text_to_add, session_text])
                 else:
@@ -111,7 +129,7 @@ def pure_text_to_epoch_txt(epoch_id):
     else:
         for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/wp19')) + 1):
             # check for dates
-            session_text = preprocess_text(19, i, epoch_beginning_date, epoch_ending_date)
+            session_text = extract_debate_for_corpus_before_20th_ep(19, i, epoch_beginning_date, epoch_ending_date)
             if session_text:
                 text_to_add = " ".join([text_to_add, session_text])
             else:
@@ -124,4 +142,9 @@ def pure_text_to_epoch_txt(epoch_id):
     return text_to_add
 
 
-print(prepare_text_for_embedding_training('data/corpus/epoch8.txt'))
+'''start = time.time()
+print(prepare_text_for_embedding_training('data/corpus/testepoch.txt', True))
+end = time.time()
+print(f'time taken: {end-start} seconds')
+# 13000 words = 7.36sec'''
+
