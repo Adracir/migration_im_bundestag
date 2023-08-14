@@ -3,4 +3,6 @@ __pycache__
 data/*
 !data/epochs.csv
 !data/session_markers.csv
+!data/keywords.csv
+archiv
 LOG Docker.txt

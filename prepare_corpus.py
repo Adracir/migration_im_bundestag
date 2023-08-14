@@ -15,7 +15,6 @@ SESSION_MARKERS_DIR = ROOT_DIR + '/data/session_markers.csv'
 EPOCHS_DIR = ROOT_DIR + '/data/epochs.csv'
 
 # TODO: rename and document methods in a meaningful way
-# TODO: maybe pickle (store) nested list made in prepare_text_for_embedding_training
 
 
 def prepare_text_for_embedding_training(filename, lemmatize=False):
@@ -24,7 +23,8 @@ def prepare_text_for_embedding_training(filename, lemmatize=False):
         s = file.read()
         tokenized = []
         sents = sent_tokenize(s, language="german")
-        print(f'{len(sents)} sents prepared')
+        print(f'{len(sents)} sents extracted')
+        i = 0
         hannover = ht.HanoverTagger('morphmodel_ger.pgz')
         for sent in sents:
             # code copied from gu.simple_preprocess, only difference: lowercasing not done,
@@ -35,7 +35,8 @@ def prepare_text_for_embedding_training(filename, lemmatize=False):
                 if 1 <= len(token) <= 40 and not token.startswith('_')
             ]
             tokenized.append(tokens)
-            print(f'\rPrepared sent No. {sents.index(sent)}', end="")
+            i = i + 1
+            print(f'\rPrepared sent No. {i}', end="")
         return tokenized
 
 
