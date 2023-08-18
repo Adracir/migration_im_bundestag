@@ -29,27 +29,37 @@ def load_keywords():
     return df
 
 
-# 17.305317401885986 seconds taken for testepoch
-def prepared_corpus_to_freq_dict(corpus_name):
+def prepared_corpus_to_count_dict(corpus_name):
     corpus_unflattened = utils.unpickle(corpus_name)
+    # flatten corpus to one layered list
     wordlist = list(itertools.chain(*corpus_unflattened))
     return Counter(wordlist)
 
 
-def find_frequencies_for_keywords(corpus_name):
-    freq_dict = prepared_corpus_to_freq_dict(corpus_name)
+def find_counts_for_keywords(epoch):
+    count_dict = prepared_corpus_to_count_dict(f"data/corpus/epoch{epoch}_prepared_lemma")
     df = load_keywords()
     keywords = df['word'].tolist()
-    return {k: freq_dict.get(k, 0) for k in keywords}
+    return {k: count_dict.get(k, 0) for k in keywords}
+
+
+# TODO: avoid double executions, most of this is already done in prepared_corpus_to_count_dict
+def count_total_words_in_epoch_corpus(epoch):
+    corpus_unflattened = utils.unpickle(f"data/corpus/epoch{epoch}_prepared_lemma")
+    wordlist = list(itertools.chain(*corpus_unflattened))
+    return len(wordlist)
+
+
+def save_frequency_info_in_csv(epoch):
+    count_dict = find_counts_for_keywords(epoch)
+    total_words = count_total_words_in_epoch_corpus(epoch)
+    for kw in count_dict.keys():
+        count = count_dict[kw]
+        freq = count/total_words
+        utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq], 'a')
 
 
 start = time.time()
-print(find_frequencies_for_keywords('data/corpus/prepared_testepoch'))
+save_frequency_info_in_csv(1)
 end = time.time()
 print(f'{end-start} seconds taken')
-
-# {'Flüchtling': 2388, 'Vertriebener': 0, 'Heimatvertriebener': 57, 'Fremdarbeiter': 10, 'Gastarbeiter': 5,
-# 'Ausländer': 378, 'Migrant': 0, 'Asylant': 0, 'Scheinasylant': 0, 'Wirtschaftsasylant': 0, 'Wirtschaftsflüchtling': 0,
-# 'Asylmissbrauch': 0, 'Asylbewerber': 0, 'Asylsuchender': 0, 'Asylberechtigter': 0, 'Multikulturell': 0,
-# 'Multinational': 0, 'Integration': 597, 'Einwanderungsland': 0, 'Migrationshintergrund': 0, 'Geflüchteter': 0,
-# 'Flüchtender': 0}
