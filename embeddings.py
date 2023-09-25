@@ -1,3 +1,5 @@
+import os.path
+
 import gensim
 from gensim.models import Word2Vec, KeyedVectors
 from scipy.stats import pearsonr, spearmanr
@@ -67,6 +69,11 @@ def smart_procrustes_align_gensim(base_embed, other_embed, words=None):
     # make sure vocabulary and indices are aligned
     in_base_embed, in_other_embed = intersection_align_gensim(base_embed, other_embed, words=words)
 
+    # re-filling the normed vectors, see comment by amacanovic in
+    # https://gist.github.com/zhicongchen/9e23d5c3f1e5b1293b16133485cd17d8
+    in_base_embed.wv.fill_norms(force=True)
+    in_other_embed.wv.fill_norms(force=True)
+
     # get the (normalized) embedding matrices
     base_vecs = in_base_embed.wv.get_normed_vectors()
     other_vecs = in_other_embed.wv.get_normed_vectors()
@@ -135,36 +142,97 @@ def intersection_align_gensim(m1, m2, words=None):
     return (m1, m2)
 
 
+def align_two_models(epoch1, epoch2, start_epoch, loophole='0'):
+    base_path = 'data/models/base_models/'
+    aligned_base_path = f'data/models/aligned_models/start_epoch_{start_epoch}{f"_lh_{loophole}" if not str(0) in loophole else ""}/'
+    if epoch1 == start_epoch:
+        model1_path = f'{base_path}epoch{epoch1}_lemma_200d_7w_cbow.model'
+    else:
+        model1_path = f'{aligned_base_path}epoch{epoch1}_lemma_200d_7w_cbow_aligned.model'
+    model2_path = f'{base_path}epoch{epoch2}_lemma_200d_7w_cbow.model'
+    model1 = Word2Vec.load(model1_path)
+    model2 = Word2Vec.load(model2_path)
+    smart_procrustes_align_gensim(model1, model2)
+    # save maybe updated version of models
+    if epoch1 == start_epoch:
+        model1.save(f'{aligned_base_path}epoch{epoch1}_lemma_200d_7w_cbow_aligned.model')
+        model1_aligned_vectors = model1.wv
+        model1_aligned_vectors.save(f'{aligned_base_path}epoch{epoch1}_lemma_200d_7w_cbow_aligned.wordvectors')
+    model2.save(f'{aligned_base_path}epoch{epoch2}_lemma_200d_7w_cbow_aligned.model')
+    model2_vectors = model2.wv
+    model2_vectors.save(f'{aligned_base_path}epoch{epoch2}_lemma_200d_7w_cbow_aligned.wordvectors')
+
+
+def evaluate_aligned_models(epoch1, epoch2, start_epoch, loophole='0'):
+    base_path = 'data/models/base_models/'
+    aligned_base_path = f'data/models/aligned_models/start_epoch_{start_epoch}{f"_lh_{loophole}" if not str(0) in loophole else ""}/'
+    start_model = Word2Vec.load(f'{aligned_base_path}epoch{start_epoch}_lemma_200d_7w_cbow_aligned.model')
+    model1_aligned = Word2Vec.load(f'{aligned_base_path}epoch{epoch1}_lemma_200d_7w_cbow_aligned.model')
+    model2 = Word2Vec.load(f'{base_path}epoch{epoch2}_lemma_200d_7w_cbow.model')
+    model2_aligned = Word2Vec.load(f'{aligned_base_path}epoch{epoch2}_lemma_200d_7w_cbow_aligned.model')
+    # Nearest Neighbors gleich je Epoche? Ja, abgesehen von Kürzungen des Vokabulars durchs Alignment
+    print(f'model{epoch2}: \n{model2.wv.most_similar(positive="Flüchtling")}\n')
+    print(f'model{epoch2}_aligned: \n{model2_aligned.wv.most_similar(positive="Flüchtling")}\n')
+    # Ähnlichkeit zwischen 1_2 & 2_2 messbar? Jaa! Auch eine rückwirkende Ähnlichkeit zur ersten Epoche lässt sich bei
+    # sequentiellem Alignment feststellen!
+    print(f'sim {epoch1}_aligned & {epoch2}: {utils.similarity(model1_aligned.wv["der"], model2.wv["der"])}')
+    print(f'sim {epoch1}_aligned & {epoch2}_aligned: {utils.similarity(model1_aligned.wv["der"], model2_aligned.wv["der"])}')
+    print(f'sim {start_epoch} & {epoch2}_aligned: {utils.similarity(start_model.wv["der"], model2_aligned.wv["der"])}')
+
+
+def align_according_to_occurrences():
+    # iterate rows in kw_occurrences.csv
+    df = pd.read_csv('data/results/kw_occurrences.csv')
+    for index, row in df.iterrows():
+        # if word never occurs, ignore
+        if row.first_occ_epoch != 0:
+            # check if resp. start_epoch-folder exists
+            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+            if os.path.isdir(aligned_base_folder):
+                # check if it contains all necessary models (iterate)
+                for epoch in range(row.first_occ_epoch, row.last_occ_epoch + 1):
+                    epoch_aligned_model_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.model'
+                    if str(epoch) not in row.loophole:
+                        if not os.path.exists(epoch_aligned_model_path):
+                            print(f'WARNING: Epoch {epoch} missing in correct folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
+                    else:
+                        if os.path.exists(epoch_aligned_model_path):
+                            print(f'WARNING: Epoch {epoch} falsely existing in correct folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
+            # if not existing, create new start_epoch-folder with evtl. resp. hole
+            else:
+                os.makedirs(aligned_base_folder)
+                # iterate all needed models and align accordingly
+                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
+                for epoch1 in necessary_epochs:
+                    if epoch1 != necessary_epochs[-1]:
+                        epoch2 = necessary_epochs[necessary_epochs.index(epoch1) + 1]
+                        align_two_models(epoch1, epoch2, row.first_occ_epoch, row.loophole)
+                        evaluate_aligned_models(epoch1, epoch2, row.first_occ_epoch)
+
+
 # prepare and save epoch corpus from txt
 '''data = prepare_corpus.prepare_text_for_embedding_training('data/corpus/epoch3.txt', False)
 with open("data/corpus/epoch3_prepared_nolemma", "wb") as fp:   #Pickling
     pickle.dump(data, fp)'''
 # load epoch corpus and create model
-'''unpickled = utils.unpickle("data/corpus/epoch2_prepared_lemma")
+'''unpickled = utils.unpickle("data/corpus/epoch8_prepared_lemma")
 model = make_word_emb_model(unpickled, sg=0, vec_dim=200, window=7)
 # save model
-model.save('data/models/epoch2_lemma_200d_7w_cbow_2.model')
+model.save('data/models/epoch8_lemma_200d_7w_cbow.model')
 # save word vectors
 word_vectors = model.wv
-word_vectors.save('data/models/epoch2_lemma_200d_7w_cbow_2.wordvectors')'''
+word_vectors.save('data/models/epoch8_lemma_200d_7w_cbow.wordvectors')'''
 # print('Model generated. Evaluating.')
 # load existing keyedvectors
-
-word_vectors = KeyedVectors.load('data/models/aligned_1_2_zhicongchen.wordvectors')
-wv_fl = word_vectors["Flüchtling"]
+# word_vectors = KeyedVectors.load('data/models/aligned_1_2_zhicongchen.wordvectors')
 # evaluate word embeddings
 # evaluate_embeddings(word_vectors, evaluation_set='222')
 # print(f"Most similar to Flüchtling: \n200d_7w_cbow: {word_vectors.most_similar(positive='Flüchtling')}")
+align_according_to_occurrences()
 # load two Models and try to align them
-'''model1 = Word2Vec.load('data/models/epoch1_lemma_200d_7w_cbow_2.model')
-model2 = Word2Vec.load('data/models/epoch2_lemma_200d_7w_cbow_2.model')
-aligned_model = smart_procrustes_align_gensim(model1, model2)
-aligned_model.save('data/models/aligned_1_2_zhicongchen.model')
-aligned_vectors = aligned_model.wv
-aligned_vectors.save('data/models/aligned_1_2_zhicongchen.wordvectors')
-# word_vectors = KeyedVectors.load("data/models/aligned_1_2.wordvectors")
-evaluate_embeddings(aligned_vectors, evaluation_set='222')'''
-# TODO: alignment method does something, but does it do the right thing? How can I test it?
+# align_two_models(3, 4, 3)
+# load changed models after alignment and check if successful
+# evaluate_aligned_models(3, 4, 3)
 
 
 # epoch 1

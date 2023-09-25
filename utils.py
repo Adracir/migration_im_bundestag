@@ -1,6 +1,8 @@
 import pickle
 import csv
 from gensim.models import KeyedVectors
+from gensim import matutils
+from numpy import dot
 import pandas as pd
 
 
@@ -27,5 +29,17 @@ def load_model(name):
 
 
 def load_keywords():
-    df = pd.read_csv('data/keywords2.csv')
+    df = pd.read_csv('data/keywords.csv')
     return df['word'].tolist()
+
+
+def similarity(wv1, wv2):
+    return dot(matutils.unitvec(wv1), matutils.unitvec(wv2))
+
+
+def get_epoch_written_form_short(epoch_id):
+    epochs_df = pd.read_csv('data/epochs.csv')
+    epochs = epochs_df['epoch_id'].tolist()
+    written_forms = epochs_df['written_form_short'].tolist()
+    i = epochs.index(epoch_id)
+    return written_forms[i]
