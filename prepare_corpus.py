@@ -9,6 +9,7 @@ import gensim.utils as gu
 from HanTa import HanoverTagger as ht  # musste erst über pip install hanta installiert werden!
 import sys
 
+import utils
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SESSION_MARKERS_DIR = ROOT_DIR + '/data/session_markers.csv'
@@ -17,33 +18,10 @@ EPOCHS_DIR = ROOT_DIR + '/data/epochs.csv'
 # TODO: rename and document methods in a meaningful way
 
 
-def prepare_text_for_embedding_training(filename, lemmatize=False):
-    print('...starting to prepare text...')
-    with open(filename, encoding='utf8') as file:
-        s = file.read()
-        tokenized = []
-        sents = sent_tokenize(s, language="german")
-        print(f'{len(sents)} sents extracted')
-        i = 0
-        hannover = ht.HanoverTagger('morphmodel_ger.pgz')
-        for sent in sents:
-            # code copied from gu.simple_preprocess, only difference: lowercasing not done,
-            # as the cases encode important semantic information in German language
-            # also includes optional lemmatization using hannover lemmatizer
-            tokens = [
-                hannover.analyze(token)[0] if lemmatize else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
-                if 1 <= len(token) <= 40 and not token.startswith('_')
-            ]
-            tokenized.append(tokens)
-            i = i + 1
-            print(f'\rPrepared sent No. {i}', end="")
-        return tokenized
-
-
 # TODO: reverse/improve logic. maybe include loop in method and only filter by epoch limiting dates
 def extract_debate_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, epoch_ending_date):
     """
-    extract spoken text in parliamentary debate from xml file downloaded from https://www.bundestag.de/services/opendata
+    extract transcript of spoken text in parliamentary debate from xml file downloaded from https://www.bundestag.de/services/opendata
     :param ep: election period
     :param session: number of the parliamentary session
     :param epoch_beginning_date: beginning date for the epoch (50s, 60s, 70s...) to filter
@@ -143,6 +121,48 @@ def pure_text_to_epoch_txt(epoch_id):
     return text_to_add
 
 
+def prepare_text_for_embedding_training(filename, lemmatize=False):
+    print('...starting to prepare text...')
+    with open(filename, encoding='utf8') as file:
+        s = file.read()
+        tokenized = []
+        sents = sent_tokenize(s, language="german")
+        print(f'{len(sents)} sents extracted')
+        i = 0
+        hannover = ht.HanoverTagger('morphmodel_ger.pgz')
+        for sent in sents:
+            # first unite words split by line breaks
+            sent = sent.replace('-\n', '')
+            # code copied from gu.simple_preprocess, only difference: lowercasing not done,
+            # as the cases encode important semantic information in German language
+            # also includes optional lemmatization using hannover lemmatizer
+            tokens = [
+                hannover.analyze(token)[0] if lemmatize else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
+                if 1 <= len(token) <= 40 and not token.startswith('_')
+            ]
+            tokenized.append(tokens)
+            i = i + 1
+            print(f'\rPrepared sent No. {i}', end="")
+        return tokenized
+
+
+def print_contexts_for_word_from_lemmatized_corpus(word, epoch):
+    # find path to corpus
+    corpus_path = f'data/corpus/epoch{epoch}_prepared_lemma'
+    # unpickle corpus
+    corpus = utils.unpickle(corpus_path)
+    sents_containing_word = []
+    # search lists for word
+    for sent in corpus:
+        if word in sent:
+            sents_containing_word.append(sent)
+    print(f'{len(sents_containing_word)} Sätze mit Wort {word} gefunden:')
+    for s in sents_containing_word:
+        print(f'{sents_containing_word.index(s)}. {s}\n')
+    return sents_containing_word
+
+
+# print_contexts_for_word_from_lemmatized_corpus("Auslän", 6)
 '''start = time.time()
 print(prepare_text_for_embedding_training('data/corpus/testepoch.txt', True))
 end = time.time()

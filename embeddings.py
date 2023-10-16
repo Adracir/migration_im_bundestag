@@ -19,7 +19,7 @@ def make_word_emb_model(data, sg=1, vec_dim=100, window=5):
     :param vec_dim: defines the dimensions of the resulting vectors
     :param window: defines the window that is used to create the embeddings
     """
-    print('\nGenerating Model')
+    print('Generating Model')
     return gensim.models.Word2Vec(data, min_count=1, sg=sg, vector_size=vec_dim, window=window)
 
 
@@ -182,7 +182,7 @@ def evaluate_aligned_models(epoch1, epoch2, start_epoch, loophole='0'):
 
 def align_according_to_occurrences():
     # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences.csv')
+    df = pd.read_csv('data/results/kw_occurrences231015.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:
@@ -228,7 +228,7 @@ word_vectors.save('data/models/epoch8_lemma_200d_7w_cbow.wordvectors')'''
 # evaluate word embeddings
 # evaluate_embeddings(word_vectors, evaluation_set='222')
 # print(f"Most similar to Flüchtling: \n200d_7w_cbow: {word_vectors.most_similar(positive='Flüchtling')}")
-align_according_to_occurrences()
+# align_according_to_occurrences()
 # load two Models and try to align them
 # align_two_models(3, 4, 3)
 # load changed models after alignment and check if successful

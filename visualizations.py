@@ -33,7 +33,7 @@ def plot_frequencies():
             kw_freqs_df = freqs_df[freqs_df['keyword'] == kw]
             freqs = kw_freqs_df['freq'].tolist()
             title = f'Häufigkeiten des Schlagwortes {kw}'
-            path = f'data/results/plots/freq_{kw}_plot.png'
+            path = f'data/results/plots/frequencies/freq_{kw}_plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -49,7 +49,7 @@ def plot_frequencies():
                 freqs = [sum(x) for x in zip(freqs, kw_freqs)]
             indices_done.extend(combine_group_indices)
             title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
-            path = f"data/results/plots/freq_combined_{'_'.join(combined_kws)}_plot.png"
+            path = f"data/results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}_plot.png"
         written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
         plt.title(title)
@@ -104,7 +104,7 @@ def plot_comparing_frequencies():
             freqs[c] = kw_freqs
         indices_done.extend(compare_group_indices)
         title = f"Häufigkeiten der Schlagwörter {', '.join(compared_kws)}"
-        path = f"data/results/plots/freq_compared_{'_'.join(compared_kws)}_plot.png"
+        path = f"data/results/plots/frequencies/freq_compared_{'_'.join(compared_kws)}_plot.png"
         written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
         plt.title(title)
@@ -131,29 +131,6 @@ def plot_comparing_frequencies():
         fig.savefig(path)
         plt.close(fig)
         print("plot saved")
-
-
-# TODO: other place for this method?
-def find_first_occurrences_for_keywords():
-    # load keywords
-    keywords = utils.load_keywords()
-    # load freqs
-    df = pd.read_csv('data/results/freqs.csv')
-    utils.write_info_to_csv("data/results/kw_occurrences.csv", ['keyword', 'first_occ_epoch', 'last_occ_epoch'])
-    # for each keyword find first & last non-null freq-epoch
-    for kw in keywords:
-        kw_freqs_df = df[df['keyword'] == kw]
-        # freq infos for kw df
-        non_zero_epochs_df = kw_freqs_df[kw_freqs_df['count'] != 0]
-        # für welche Epochs ist count != 0?
-        non_zero_epochs = non_zero_epochs_df['epoch'].tolist()
-        first_occ_epoch = min(non_zero_epochs) if non_zero_epochs else 0
-        last_occ_epoch = max(non_zero_epochs) if non_zero_epochs else 0
-        for i in range(first_occ_epoch, last_occ_epoch+1):
-            if i not in non_zero_epochs:
-                print(f"WARNING: {kw} has a loophole at {i}")
-        # write into csv: keyword, first_occ_epoch, last_occ_epoch
-        utils.write_info_to_csv("data/results/kw_occurrences.csv", [kw, first_occ_epoch, last_occ_epoch], mode='a')
 
 
 # Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
@@ -272,7 +249,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
 
 def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True):
     # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences.csv')
+    df = pd.read_csv('data/results/kw_occurrences231015.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:
@@ -283,6 +260,5 @@ def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, ke
                 plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, k, perplexity, mode_gensim, keep_doubles)
 
 
-# find_first_occurrences_for_keywords()
 # plot_words_from_time_epochs_tsne([1, 2], target_word='Flüchtling')
-plot_tsne_according_to_occurrences(keep_doubles=False)
+# plot_tsne_according_to_occurrences(k=10, perplexity=20)
