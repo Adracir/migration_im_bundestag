@@ -144,6 +144,8 @@ def label_point(x, y, val, ax):
             ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
 
 
+# TODO: plot sentiment similarly to freq. 1 plot per kw and sentiword_model + 1 per kw combining the models
+
 # TODO: improve representation so that it becomes more meaningful
 # maybe not much more useful than lists of nearest neighbors :/
 def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, mode_gensim=True, keep_doubles=True):

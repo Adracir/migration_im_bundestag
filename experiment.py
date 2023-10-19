@@ -1,9 +1,12 @@
+import os.path
+
 import utils
 import itertools
 import time
 from collections import Counter
 from gensim.models import KeyedVectors
 import pandas as pd
+import numpy as np
 
 
 # TODO: nearest neighbors
@@ -146,6 +149,51 @@ def comparing_connotations(model1, model2, word, k=10, verbose=True):
     dist = cosine(vector1, vector2)
     # Return this cosine distance -- a measure of the relative semantic shift for this word between these two models
     return dist
+
+
+# adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
+def s(w, A, B, word_vectors):
+    """Calculate bias score of attribute word w and two target sets A and B
+    :param w: attribute word
+    :param A: target set
+    :param B: other target set
+    :param word_vectors: keyedvectors to use"""
+    cos_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
+    cos_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
+    return np.mean(cos_wa) - np.mean(cos_wb)
+
+
+def analyse_senti_valuation_of_keywords(sentiword_model=""):
+    print("preparing sentiment analysis")
+    # load keywords
+    keywords = utils.load_keywords()
+    # load sentiwords according to choice
+    senti_file_path = f"data/{sentiword_model}{'_' if sentiword_model else ''}sentiwords.csv"
+    df = pd.read_csv(senti_file_path)
+    # group sentiwords by value (A: +1/B: -1)
+    df_pos = df[df["value"] == 1]
+    df_neg = df[df["value"] == -1]
+    pos_words = df_pos["word"].tolist()
+    neg_words = df_neg["word"].tolist()
+    # prepare output csv
+    output_file_path = "data/results/senti.csv"
+    if not os.path.exists(output_file_path):
+        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_mode", "value"])
+    # iterate keywords
+    for kw in keywords:
+        print(f"Analysing key word {kw}")
+        # for keyword: iterate epochs
+        # TODO: maybe get epochs programmatically??
+        for epoch in range(1, 9):
+            # get associated wordvectors
+            word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
+            try:
+                # calculate bias value of word with s()
+                senti = s(kw, pos_words, neg_words, word_vectors)
+                # save value in csv
+                utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_model if sentiword_model else "standard", senti], mode="a")
+            except KeyError:
+                print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
 
 
 # start = time.time()

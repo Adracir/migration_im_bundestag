@@ -32,4 +32,7 @@ if __name__ == '__main__':
     # save nearest neighbors without alignment
     '''experiment.save_nearest_neighbors()'''
     # possibility to analyse some words more closely, see their context in the corpus
-    prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Kugler', 4)
+    '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Kugler', 4)'''
+    # analyse sentiment of words
+    # TODO: maybe omit some less indicative sentiword_models!
+    experiment.analyse_senti_valuation_of_keywords(sentiword_model="religion")
