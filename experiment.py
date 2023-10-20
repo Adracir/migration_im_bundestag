@@ -83,7 +83,11 @@ def find_first_occurrences_for_keywords():
 
 
 # TODO: maybe ignore words in epoch that appear seldom, e.g. less than 1e-06
-def save_nearest_neighbors():
+def save_nearest_neighbors(aligned=False):
+    if aligned:
+        df = pd.read_csv('data/results/kw_occurrences.csv')
+    epochs = range(1, 9)
+    base_folder = 'data/models/base_models'
     # load keywords from csv
     keywords = utils.load_keywords()
     # initialize csv to save results to
@@ -91,13 +95,18 @@ def save_nearest_neighbors():
     for no in range(1, 11):
         words_similarities_headings.append(f'Word_{no}')
         words_similarities_headings.append(f'Similarity_{no}')
-    save_file_path = 'data/results/nearest_neighbors.csv'
+    save_file_path = f'data/results/nearest_neighbors{"_aligned" if aligned else ""}.csv'
     utils.write_info_to_csv(save_file_path, ['Keyword', 'Epoch'] + words_similarities_headings)
     # iterate keywords
     for kw in keywords:
+        if aligned:
+            row = df[df['keyword'] == kw].iloc[0]
+            base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+            epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if
+                                str(item) not in row.loophole]
         # iterate base models/epochs
-        for epoch in range(1, 9):
-            word_vectors_path = f'data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors'
+        for epoch in epochs:
+            word_vectors_path = f'{base_folder}/epoch{epoch}_lemma_200d_7w_cbow{"_aligned" if aligned else ""}.wordvectors'
             word_vectors = KeyedVectors.load(word_vectors_path)
             # retrieve 10 nearest neighbors of kw
             try:
@@ -178,7 +187,7 @@ def analyse_senti_valuation_of_keywords(sentiword_model=""):
     # prepare output csv
     output_file_path = "data/results/senti.csv"
     if not os.path.exists(output_file_path):
-        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_mode", "value"])
+        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_model", "value"])
     # iterate keywords
     for kw in keywords:
         print(f"Analysing key word {kw}")

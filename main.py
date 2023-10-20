@@ -35,4 +35,15 @@ if __name__ == '__main__':
     '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Kugler', 4)'''
     # analyse sentiment of words
     # TODO: maybe omit some less indicative sentiword_models!
-    experiment.analyse_senti_valuation_of_keywords(sentiword_model="religion")
+    '''experiment.analyse_senti_valuation_of_keywords(sentiword_model="religion")'''
+    # plot valuations
+    '''visualizations.plot_sentiments(['standard', 'political', 'race'])'''
+    # align models to make visualization of nearest neighbors over time
+    '''embeddings.align_according_to_occurrences()'''
+    # add model for epoch 8 for word "multikulturell"
+    # TODO: maybe avoid or include in align_according_to_occurrences?
+    '''embeddings.align_two_models(7, 8, 4)'''
+    # save nearest neighbors from aligned models to csv
+    '''experiment.save_nearest_neighbors(aligned=True)'''
+    # TODO: maybe use this csv for the visualization, too! but it doesn't contain any info on the vectors themselves
+    visualizations.plot_tsne_according_to_occurrences(k=12, keep_doubles=False)

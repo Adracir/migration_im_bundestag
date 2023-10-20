@@ -123,7 +123,7 @@ def plot_comparing_frequencies():
             plt.plot(x, freqs[a], f'{colors[a]}-', label=compared_kws[a])
         # show legend
         plt.legend()
-        # set tight layout (so that nothing is cut out)#
+        # set tight layout (so that nothing is cut out)
         plt.tight_layout()
         # save diagram
         fig = plt.gcf()
@@ -144,7 +144,100 @@ def label_point(x, y, val, ax):
             ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
 
 
-# TODO: plot sentiment similarly to freq. 1 plot per kw and sentiword_model + 1 per kw combining the models
+def plot_sentiments(sentiword_model_arr):
+    senti_df = pd.read_csv('data/results/senti.csv')
+    senti_df_filtered = senti_df[senti_df['sentiword_model'].isin(sentiword_model_arr)]
+    keywords_df = pd.read_csv('data/keywords.csv')
+    # keywords = utils.load_keywords()
+    keywords = keywords_df['word'].tolist()
+    # combine_groups = keywords_df['combine_group'].tolist()
+    ignoring = keywords_df['ignore'].tolist()
+    indices_done = []
+    for i in range(0, len(keywords)):
+        # combine_group = combine_groups[i]
+        # case 1: word has already been plotted or is not present in the whole corpus
+        if i in indices_done or ignoring[i] == 1:
+            continue
+        # case 2: word does not need to be combined with other spelling and has not been plotted yet
+        # if combine_group == 0:
+        else:
+            kw = keywords[i]
+            kw_senti_df = senti_df_filtered[senti_df_filtered['word'] == kw]
+            # only take epochs that are valid
+            epochs = sorted(set(kw_senti_df['epoch'].tolist()))
+            # senti for all models in array
+            senti_values = []
+            for sentiword_model in sentiword_model_arr:
+                kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_model'] == sentiword_model]
+                senti_values_for_model = []
+                for epoch in epochs:
+                    kw_senti_model_epoch_df = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]
+                    value = kw_senti_model_epoch_df['value'].iloc[0]
+                    senti_values_for_model.append(value)
+                senti_values.append(senti_values_for_model)
+            indices_done.append(i)
+            title = f'Wertungen des Schlagwortes {kw}'
+            path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_model_arr)}_plot.png'
+        # case 3: combine different spellings
+        # TODO: maybe include combining
+        '''else:
+            # find all spellings for word
+            combine_group_indices = [i for i, x in enumerate(combine_groups) if x == combine_group]
+            senti = [0] * len(epochs)
+            combined_kws = []
+            for cgi in combine_group_indices:
+                kw = keywords[cgi]
+                combined_kws.append(kw)
+                kw_senti_df = senti_df_filtered[senti_df_filtered['word'] == kw]
+                # only take epochs that are valid
+                # TODO: unite from both kws
+                epochs = sorted(set(kw_senti_df['epoch'].tolist()))
+                senti_values = []
+                for sentiword_model in sentiword_model_arr:
+                    kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_model'] == sentiword_model]
+                    senti_values_for_model = []
+                    for epoch in epochs:
+                        kw_senti_model_epoch_df = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]
+                        value = kw_senti_model_epoch_df['value'].iloc[0]
+                        senti_values_for_model.append(value)
+                    senti_values.append(senti_values_for_model)
+                indices_done.append(i)
+                kw_freqs_df = freqs_df[freqs_df['keyword'] == kw]
+                kw_freqs = kw_freqs_df['freq'].tolist()
+                # save sum of all kw_freqs into freqs
+                senti = [sum(x) for x in zip(senti, kw_freqs)]
+            indices_done.extend(combine_group_indices)
+            title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
+            path = f"data/results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_model_arr)}_plot.png"'''
+        epochs_df = pd.read_csv('data/epochs.csv')
+        written_forms = epochs_df.loc[epochs_df['epoch_id'].isin(epochs), 'written_form'].tolist()  # TODO: retrieve written forms only for relevant epochs
+        # title
+        plt.title(title)
+        # prepare axes
+        x = np.arange(len(epochs))
+        ax = plt.gca()
+        ax.set_xlim(0, len(epochs))
+        plt.xticks(x, written_forms)
+        plt.xlabel("Epochen")
+        plt.ylabel('durchschnittliche Ähnlichkeit mit den Senti-Word-Sets (pos: >0, neg: <0) ')
+        plt.rc('grid', linestyle=':', color='black', linewidth=1)
+        plt.axhline(0, color='black', linewidth=2)
+        plt.grid(True)
+        # plot senti
+        colors = ['r', 'b', 'g', 'y', 'm']
+        for a in range(0, len(senti_values)):
+            plt.plot(x, senti_values[a], f'{colors[a]}-', label=sentiword_model_arr[a])
+        # show legend
+        plt.legend()
+        # set tight layout (so that nothing is cut out)
+        plt.tight_layout()
+        # save diagram
+        fig = plt.gcf()
+        fig.set_size_inches(10, 8)
+        fig.savefig(path)
+        plt.close(fig)
+        print("plot saved")
+
 
 # TODO: improve representation so that it becomes more meaningful
 # maybe not much more useful than lists of nearest neighbors :/
@@ -251,7 +344,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
 
 def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True):
     # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences231015.csv')
+    df = pd.read_csv('data/results/kw_occurrences.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:
@@ -264,3 +357,4 @@ def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, ke
 
 # plot_words_from_time_epochs_tsne([1, 2], target_word='Flüchtling')
 # plot_tsne_according_to_occurrences(k=10, perplexity=20)
+# plot_sentiments(['standard', 'political'])

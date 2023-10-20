@@ -182,7 +182,7 @@ def evaluate_aligned_models(epoch1, epoch2, start_epoch, loophole='0'):
 
 def align_according_to_occurrences():
     # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences231015.csv')
+    df = pd.read_csv('data/results/kw_occurrences.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:
@@ -197,12 +197,13 @@ def align_according_to_occurrences():
                             print(f'WARNING: Epoch {epoch} missing in correct folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
                     else:
                         if os.path.exists(epoch_aligned_model_path):
-                            print(f'WARNING: Epoch {epoch} falsely existing in correct folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
+                            print(f'WARNING: Epoch {epoch} falsely existing in folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
             # if not existing, create new start_epoch-folder with evtl. resp. hole
             else:
                 os.makedirs(aligned_base_folder)
                 # iterate all needed models and align accordingly
                 necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
+                print(f'aligning epochs {", ".join(map(str, necessary_epochs))}')
                 for epoch1 in necessary_epochs:
                     if epoch1 != necessary_epochs[-1]:
                         epoch2 = necessary_epochs[necessary_epochs.index(epoch1) + 1]
