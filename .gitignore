@@ -5,4 +5,7 @@ data/*
 !data/epochs.csv
 !data/session_markers.csv
 !data/keywords.csv
+!data/sentiwords.csv
+!data/political_sentiwords.csv
+!data/race_sentiwords.csv
 !data/results
