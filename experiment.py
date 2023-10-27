@@ -8,6 +8,8 @@ from gensim.models import KeyedVectors
 import pandas as pd
 import numpy as np
 
+from scipy.spatial.distance import cosine
+
 
 # TODO: nearest neighbors
 # TODO: alignment & diachronic visualizations
@@ -82,10 +84,18 @@ def find_first_occurrences_for_keywords():
                                                                     len(relevant_low_occ_epochs) > 0 else 0], mode='a')
 
 
+def create_kw_occurrences_and_merge_to_keyword_list():
+    find_first_occurrences_for_keywords()
+    df1 = pd.read_csv('data/keywords.csv')
+    df2 = pd.read_csv('data/results/kw_occurrences.csv')
+    merged_df = df1.merge(df2, on='keyword', how='outer')
+    merged_df.to_csv('data/keywords_merged.csv', index=False)
+
+
 # TODO: maybe ignore words in epoch that appear seldom, e.g. less than 1e-06
 def save_nearest_neighbors(aligned=False):
     if aligned:
-        df = pd.read_csv('data/results/kw_occurrences.csv')
+        df = pd.read_csv('data/keywords_merged.csv')
     epochs = range(1, 9)
     base_folder = 'data/models/base_models'
     # load keywords from csv
@@ -122,7 +132,6 @@ def save_nearest_neighbors(aligned=False):
                 print(f"Keyerror: Key '{kw}' not present in vocabulary for epoch {epoch}")
 
 
-# TODO: migrate and try
 def comparing_connotations(model1, model2, word, k=10, verbose=True):
     """ copied from https://gensim.narkive.com/ZsBAPGm4/11863-word2vec-alignment
     calculates a relative semantic shift between a word in two different models
@@ -131,8 +140,6 @@ def comparing_connotations(model1, model2, word, k=10, verbose=True):
     - `k` is the size of the word's neighborhood (# of its closest words in its
     vector space).
     """
-    # Import function for cosine distance
-    from scipy.spatial.distance import cosine
     # Check that this word is present in both models
     # if not word in model1.wv.vocab or not word in model2.wv.vocab:
     if not word in model1.key_to_index or not word in model2.key_to_index:
@@ -158,6 +165,42 @@ def comparing_connotations(model1, model2, word, k=10, verbose=True):
     dist = cosine(vector1, vector2)
     # Return this cosine distance -- a measure of the relative semantic shift for this word between these two models
     return dist
+
+
+def compare_connotations_for_all_keywords():
+    # load keywords and epochs
+    df = pd.read_csv('data/keywords_merged.csv')
+    keywords = df['keyword'].tolist()
+    epochs_df = pd.read_csv('data/epochs.csv')
+    # prepare output csv
+    output_csv_path = 'data/results/compared_connotations.csv'
+    utils.write_info_to_csv(output_csv_path, ['keyword', 'first_epoch', 'next_epoch', 'epoch_range_str', 'distance'])
+    # depending on occurrences, get necessary models/epochs
+    for kw in keywords:
+        row = df[df['keyword'] == kw].iloc[0]
+        necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
+        aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+        # iterate the epochs/models, always taking two neighboring ones at once
+        for epoch in necessary_epochs:
+            if epoch == necessary_epochs[-1]:
+                continue
+            else:
+                next_epoch = necessary_epochs[necessary_epochs.index(epoch)+1]
+                wordvectors1 = KeyedVectors.load(f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.wordvectors')
+                wordvectors2 = KeyedVectors.load(f'{aligned_base_folder}/epoch{next_epoch}_lemma_200d_7w_cbow_aligned.wordvectors')
+                # get distance and save into csv
+                vector1 = wordvectors1[kw]
+                vector2 = wordvectors2[kw]
+                dist = cosine(vector1, vector2)
+                # TODO: test this alternative with unaligned vectors
+                # dist = comparing_connotations(wordvectors1, wordvectors2, kw)
+                epoch_row = epochs_df[epochs_df['epoch_id'] == epoch].iloc[0]
+                next_epoch_row = epochs_df[epochs_df['epoch_id'] == next_epoch].iloc[0]
+                epoch_range_str = f'{epoch_row.written_form_short} bis {next_epoch_row.written_form_short}'
+                utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
+
+
+            # TODO: maybe also calculate and plot distances for pairs or triples of words, as in Braun
 
 
 # adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
@@ -205,13 +248,6 @@ def analyse_senti_valuation_of_keywords(sentiword_model=""):
                 print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
 
 
-# start = time.time()
-# for epoch in range(1, 9):
-# save_frequency_info_in_csv(epoch)
-# end = time.time()
-# print(f'{end-start} seconds taken')
-# word_vectors1 = KeyedVectors.load('data/models/epoch1_lemma_200d_7w_cbow.wordvectors')
-# word_vectors2 = KeyedVectors.load('data/models/epoch2_lemma_200d_7w_cbow.wordvectors')
-# print(comparing_connotations(word_vectors1, word_vectors2, "Flüchtling"))
-# save_nearest_neighbors()
-# find_first_occurrences_for_keywords()
+# print(comparing_connotations(KeyedVectors.load('data/models/aligned_models/start_epoch_1/epoch1_lemma_200d_7w_cbow_aligned.wordvectors'),
+                    #    KeyedVectors.load('data/models/aligned_models/start_epoch_1/epoch2_lemma_200d_7w_cbow_aligned.wordvectors'),
+                    #    'Flüchtling'))

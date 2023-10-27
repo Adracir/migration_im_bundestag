@@ -35,8 +35,8 @@ def load_model(name):
 
 
 def load_keywords():
-    df = pd.read_csv('data/keywords.csv')
-    return df['word'].tolist()
+    df = pd.read_csv('data/keywords_merged.csv')
+    return df['keyword'].tolist()
 
 
 def similarity(wv1, wv2):

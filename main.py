@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # count frequencies and save in csv
     '''experiment.save_frequency_info_in_csv()'''
     # analyze first occurrences of keywords and save in csv
-    '''experiment.find_first_occurrences_for_keywords()'''
+    '''experiment.create_kw_occurrences_and_merge_to_keyword_list()'''
     # plot frequencies
     '''visualizations.plot_frequencies()
     visualizations.plot_comparing_frequencies()'''
@@ -46,4 +46,8 @@ if __name__ == '__main__':
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: maybe use this csv for the visualization, too! but it doesn't contain any info on the vectors themselves
-    visualizations.plot_tsne_according_to_occurrences(k=12, keep_doubles=False)
+    '''visualizations.plot_tsne_according_to_occurrences(k=12, keep_doubles=False)'''
+    # save distance for each keyword between the aligned epochs
+    '''experiment.compare_connotations_for_all_keywords()'''
+    # plot these distances
+    visualizations.plot_comparing_connotations()

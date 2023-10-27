@@ -14,9 +14,9 @@ import os
 def plot_frequencies():
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
-    keywords_df = pd.read_csv('data/keywords.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords = utils.load_keywords()
-    keywords = keywords_df['word'].tolist()
+    keywords = keywords_df['keyword'].tolist()
     combine_groups = keywords_df['combine_group'].tolist()
     epochs = epochs_df['epoch_id'].tolist()
     # TODO: Obacht! freqs and keywords and epochs should be at same status for this to work!
@@ -71,15 +71,15 @@ def plot_frequencies():
         fig.set_size_inches(10, 8)
         fig.savefig(path)
         plt.close(fig)
-        print("plot saved")
+        print(f"plot {i} saved")
 
 
 def plot_comparing_frequencies():
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
-    keywords_df = pd.read_csv('data/keywords.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords = utils.load_keywords()
-    keywords = keywords_df['word'].tolist()
+    keywords = keywords_df['keyword'].tolist()
     compare_groups = keywords_df['compare_group'].tolist()
     epochs = epochs_df['epoch_id'].tolist()
     # TODO: Obacht! freqs and keywords and epochs should be at same status for this to work!
@@ -130,7 +130,7 @@ def plot_comparing_frequencies():
         fig.set_size_inches(10, 8)
         fig.savefig(path)
         plt.close(fig)
-        print("plot saved")
+        print(f"plot {i} saved")
 
 
 # Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
@@ -147,9 +147,9 @@ def label_point(x, y, val, ax):
 def plot_sentiments(sentiword_model_arr):
     senti_df = pd.read_csv('data/results/senti.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_model'].isin(sentiword_model_arr)]
-    keywords_df = pd.read_csv('data/keywords.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords = utils.load_keywords()
-    keywords = keywords_df['word'].tolist()
+    keywords = keywords_df['keyword'].tolist()
     # combine_groups = keywords_df['combine_group'].tolist()
     ignoring = keywords_df['ignore'].tolist()
     indices_done = []
@@ -236,7 +236,7 @@ def plot_sentiments(sentiword_model_arr):
         fig.set_size_inches(10, 8)
         fig.savefig(path)
         plt.close(fig)
-        print("plot saved")
+        print(f"plot for {kw} saved")
 
 
 # TODO: improve representation so that it becomes more meaningful
@@ -321,6 +321,43 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         plt.close()
 
 
+# TODO: plots so sinnvoll? Schwer lesbar irgendwie! Evtl anderen Weg finden
+def plot_comparing_connotations():
+    distances_df = pd.read_csv('data/results/compared_connotations.csv')
+    # epochs_df = pd.read_csv('data/epochs.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
+    keywords = keywords_df['keyword'].tolist()
+    for kw in keywords:
+        if keywords_df[keywords_df['keyword'] == kw].ignore.iloc[0] == 0:
+            kw_distances_df = distances_df[distances_df['keyword'] == kw]
+            title = f'Entwicklung der Nearest Neighbors von {kw}'
+            path = f'data/results/plots/associations/dist_development_{kw}_plot.png'
+            written_forms = kw_distances_df['epoch_range_str'].tolist()
+            epochs = kw_distances_df['first_epoch'].tolist()
+            distances = kw_distances_df['distance'].tolist()
+            # title
+            plt.title(title)
+            # prepare axes
+            x = np.arange(len(epochs))
+            ax = plt.gca()
+            ax.set_xlim(0, len(epochs))
+            plt.xticks(x, written_forms)
+            plt.xlabel("Epochen")
+            plt.ylabel('quantifizierte Entwicklung der Nearest Neighbors')
+            plt.rc('grid', linestyle=':', color='black', linewidth=1)
+            plt.grid(True)
+            # plot distances
+            plt.plot(x, distances, 'r-')
+            # set tight layout (so that nothing is cut out)
+            plt.tight_layout()
+            # save diagram
+            fig = plt.gcf()
+            fig.set_size_inches(10, 8)
+            fig.savefig(path)
+            plt.close(fig)
+            print(f"plot for {kw} saved")
+
+
 # words not given in corpus:
 # Vertriebener
 # Geflüchteter
@@ -343,8 +380,8 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
 
 
 def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True):
-    # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences.csv')
+    # iterate rows in keywords_merged.csv
+    df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:

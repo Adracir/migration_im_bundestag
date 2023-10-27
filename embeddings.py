@@ -181,8 +181,8 @@ def evaluate_aligned_models(epoch1, epoch2, start_epoch, loophole='0'):
 
 
 def align_according_to_occurrences():
-    # iterate rows in kw_occurrences.csv
-    df = pd.read_csv('data/results/kw_occurrences.csv')
+    # iterate rows in keywords_merged.csv
+    df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
         if row.first_occ_epoch != 0:
