@@ -215,22 +215,38 @@ def s(w, A, B, word_vectors):
     return np.mean(cos_wa) - np.mean(cos_wb)
 
 
-def analyse_senti_valuation_of_keywords(sentiword_model=""):
+def senti_with_axis(w, A, B, wordvectors):
+    # Berechnen Sie den Durchschnittsvektor der positiven und negativen Ausgangswörter
+    positive_vector = sum(wordvectors[word] for word in A if word in wordvectors.index_to_key) / len(A)
+    negative_vector = sum(wordvectors[word] for word in B if word in wordvectors.index_to_key) / len(B)
+    # Berechnen Sie die Achse, die der Polarität entspricht
+    polarity_axis = positive_vector - negative_vector
+    # Berechnen Sie den Polaritätswert für das Zielwort
+    polarity_score = sum(wordvectors[w] * polarity_axis)
+    return polarity_score
+
+
+def analyse_senti_valuation_of_keywords(sentiword_set="", only_stable=False, with_axis=False):
     print("preparing sentiment analysis")
     # load keywords
     keywords = utils.load_keywords()
     # load sentiwords according to choice
-    senti_file_path = f"data/{sentiword_model}{'_' if sentiword_model else ''}sentiwords.csv"
+    # TODO: maybe throw away other senti files, only keep stability and rename it
+    senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords{'_stability' if only_stable else ''}.csv"
     df = pd.read_csv(senti_file_path)
     # group sentiwords by value (A: +1/B: -1)
     df_pos = df[df["value"] == 1]
     df_neg = df[df["value"] == -1]
-    pos_words = df_pos["word"].tolist()
-    neg_words = df_neg["word"].tolist()
+    if only_stable:
+        pos_words = df_pos[df_pos['stable']]['word'].tolist()
+        neg_words = df_neg[df_neg['stable']]['word'].tolist()
+    else:
+        pos_words = df_pos["word"].tolist()
+        neg_words = df_neg["word"].tolist()
     # prepare output csv
-    output_file_path = "data/results/senti.csv"
+    output_file_path = f"data/results/senti{'_stable' if only_stable else ''}{'_with_axis' if with_axis else ''}.csv"
     if not os.path.exists(output_file_path):
-        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_model", "value"])
+        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
     # iterate keywords
     for kw in keywords:
         print(f"Analysing key word {kw}")
@@ -239,15 +255,67 @@ def analyse_senti_valuation_of_keywords(sentiword_model=""):
         for epoch in range(1, 9):
             # get associated wordvectors
             word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
+            # TODO: maybe ignore keywords that have ignore= 1?
             try:
-                # calculate bias value of word with s()
-                senti = s(kw, pos_words, neg_words, word_vectors)
+                if with_axis:
+                    senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
+                else:
+                    # calculate bias value of word with s()
+                    senti = s(kw, pos_words, neg_words, word_vectors)
                 # save value in csv
-                utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_model if sentiword_model else "standard", senti], mode="a")
+                utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_set if sentiword_set else "standard", senti], mode="a")
             except KeyError:
                 print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
 
 
-# print(comparing_connotations(KeyedVectors.load('data/models/aligned_models/start_epoch_1/epoch1_lemma_200d_7w_cbow_aligned.wordvectors'),
-                    #    KeyedVectors.load('data/models/aligned_models/start_epoch_1/epoch2_lemma_200d_7w_cbow_aligned.wordvectors'),
-                    #    'Flüchtling'))
+# goal: senti words should be more stable, that means distance values for each one lower than the average keyword
+# distances
+def evaluate_senti_words_stability(sentiword_sets=['', 'political', 'race']):
+    # prepare csv file
+    output_file_path = 'data/results/senti_evaluation.csv'
+    utils.write_info_to_csv(output_file_path, ['word', 'senti_word_set', 'epoch', 'next_epoch', 'distance'])
+    # retrieve average keyword distance value from compared_connotations.csv as orientation
+    dist_df = pd.read_csv('data/results/compared_connotations.csv')
+    distances = dist_df['distance'].tolist()
+    avg_kw_dist = np.mean(distances)
+    # iterate senti word files
+    for senti_model in sentiword_sets:
+        file_path = f'data/{senti_model}{"_" if senti_model else ""}sentiwords.csv'
+        df = pd.read_csv(file_path)
+        words = df['word'].tolist()
+        stability = []
+        # iterate senti words
+        for word in words:
+            epochs = range(1, 9)
+            aligned_base_folder = 'data/models/aligned_models/start_epoch_1'
+            # figure out necessary epochs
+            necessary_vectors = []
+            necessary_epochs = []
+            for epoch in epochs:
+                wordvectors = KeyedVectors.load(
+                    f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.wordvectors')
+                try:
+                    necessary_vectors.append(wordvectors[word])
+                    necessary_epochs.append(epoch)
+                except KeyError:
+                    print(f'word {word} not in epoch {epoch}')
+            for i in range(0, len(necessary_vectors)):
+                if i != len(necessary_vectors) - 1:
+                    vec = necessary_vectors[i]
+                    next_vec = necessary_vectors[i + 1]
+                    epoch = necessary_epochs[i]
+                    next_epoch = necessary_epochs[i + 1]
+                    # first save everything in new dataframe / csv: word, epoch, next_epoch, distance
+                    dist = cosine(vec, next_vec)
+                    utils.write_info_to_csv(output_file_path, [word, senti_model if senti_model else 'standard', epoch,
+                                                               next_epoch, dist], mode='a')
+            # then evaluate whether the distance value is lower than average distance value from
+            # compared_connotations and append this info to the resp. senti csv file
+            output_df = pd.read_csv(output_file_path)
+            senti_word_output_df = output_df[output_df['word'] == word]
+            senti_word_distances = senti_word_output_df['distance'].tolist()
+            avg_senti_dist = np.mean(senti_word_distances)
+            stability.append('true' if avg_senti_dist < avg_kw_dist else 'false')
+        df['stable'] = stability
+        df.to_csv(f'data/{senti_model}{"_" if senti_model else ""}sentiwords_stability.csv', index=False)
+

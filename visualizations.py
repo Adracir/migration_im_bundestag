@@ -11,10 +11,46 @@ from matplotlib import collections as mc
 import os
 
 
-def plot_frequencies():
+def ignore_1000_vals(x, y):
+    x_segments = []
+    y_segments = []
+    current_segment_x = []
+    current_segment_y = []
+    for xi, yi in zip(x, y):
+        if yi != 1000:
+            current_segment_x.append(xi)
+            current_segment_y.append(yi)
+        else:
+            if current_segment_x:
+                x_segments.append(current_segment_x)
+                y_segments.append(current_segment_y)
+            current_segment_x = []
+            current_segment_y = []
+    if current_segment_x:
+        x_segments.append(current_segment_x)
+        y_segments.append(current_segment_y)
+    return [x_segments, y_segments]
+
+
+# TODO: decide whether to use kw values or all freqs values for reference!!!
+def transform_expected_freqs_values(all_freqs, relevant_expected_values):
+    transformed_values = []
+    max_freqs = max(all_freqs)
+    step_size = max_freqs/8
+    for val in relevant_expected_values:
+        if val == 1000:
+            transformed_values.append(1000)
+        else:
+            transformed_values.append(step_size * val)
+    return transformed_values
+
+
+def plot_frequencies(include_expected=False):
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
+    if include_expected:
+        expected_df = pd.read_csv('data/expected_values.csv')
     # keywords = utils.load_keywords()
     keywords = keywords_df['keyword'].tolist()
     combine_groups = keywords_df['combine_group'].tolist()
@@ -32,8 +68,14 @@ def plot_frequencies():
             kw = keywords[i]
             kw_freqs_df = freqs_df[freqs_df['keyword'] == kw]
             freqs = kw_freqs_df['freq'].tolist()
+            if include_expected:
+                # get relevant info from expected_values for epochs and kw
+                expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw)]
+                expected_values = expected_kw_df['expected_freq'].tolist()
+                # transform values using all existing freqs values
+                transformed_exp_values = transform_expected_freqs_values(freqs, expected_values)
             title = f'Häufigkeiten des Schlagwortes {kw}'
-            path = f'data/results/plots/frequencies/freq_{kw}_plot.png'
+            path = f'data/results/plots/frequencies/freq_{kw}{"_with_expected" if include_expected else ""}_plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -47,9 +89,15 @@ def plot_frequencies():
                 kw_freqs = kw_freqs_df['freq'].tolist()
                 # save sum of all kw_freqs into freqs
                 freqs = [sum(x) for x in zip(freqs, kw_freqs)]
+            if include_expected:
+                # get relevant info from expected_values for epochs and kw
+                expected_kw_df = expected_df[expected_df['keyword'].str.contains(keywords[combine_group_indices[0]])]
+                expected_values = expected_kw_df['expected_freq'].tolist()
+                # transform values using all existing freqs values
+                transformed_exp_values = transform_expected_freqs_values(freqs, expected_values)
             indices_done.extend(combine_group_indices)
             title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
-            path = f"data/results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}_plot.png"
+            path = f"data/results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}{'_with_expected' if include_expected else ''}_plot.png"
         written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
         plt.title(title)
@@ -62,8 +110,18 @@ def plot_frequencies():
         plt.ylabel('relative Häufigkeiten im Korpus')
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.grid(True)
+        # plot a grey area for the expected values
+        if include_expected:
+            without_1000_vals = ignore_1000_vals(x, transformed_exp_values)
+            x_segments = without_1000_vals[0]
+            y_segments = without_1000_vals[1]
+            plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', alpha=0.5, linewidth=70)
+            plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', linewidth=1,
+                 label='expected values with error band')
         # plot freqs
-        plt.plot(x, freqs, 'r-')
+        plt.plot(x, freqs, 'r-', label="frequencies")
+        # plot legend
+        plt.legend()
         # set tight layout (so that nothing is cut out)
         plt.tight_layout()
         # save diagram
@@ -80,7 +138,7 @@ def plot_comparing_frequencies():
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords = utils.load_keywords()
     keywords = keywords_df['keyword'].tolist()
-    compare_groups = keywords_df['compare_group'].tolist()
+    compare_groups = keywords_df['freq_compare_group'].tolist()
     epochs = epochs_df['epoch_id'].tolist()
     # TODO: Obacht! freqs and keywords and epochs should be at same status for this to work!
     #  Maybe implement cleverer way
@@ -144,9 +202,9 @@ def label_point(x, y, val, ax):
             ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
 
 
-def plot_sentiments(sentiword_model_arr):
-    senti_df = pd.read_csv('data/results/senti.csv')
-    senti_df_filtered = senti_df[senti_df['sentiword_model'].isin(sentiword_model_arr)]
+def plot_sentiments(sentiword_set_arr, only_stable=False, with_axis=False):
+    senti_df = pd.read_csv(f'data/results/senti{"_stable" if only_stable else ""}{"_with_axis" if with_axis else ""}.csv')
+    senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords = utils.load_keywords()
     keywords = keywords_df['keyword'].tolist()
@@ -167,8 +225,8 @@ def plot_sentiments(sentiword_model_arr):
             epochs = sorted(set(kw_senti_df['epoch'].tolist()))
             # senti for all models in array
             senti_values = []
-            for sentiword_model in sentiword_model_arr:
-                kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_model'] == sentiword_model]
+            for sentiword_set in sentiword_set_arr:
+                kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_set'] == sentiword_set]
                 senti_values_for_model = []
                 for epoch in epochs:
                     kw_senti_model_epoch_df = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]
@@ -177,7 +235,7 @@ def plot_sentiments(sentiword_model_arr):
                 senti_values.append(senti_values_for_model)
             indices_done.append(i)
             title = f'Wertungen des Schlagwortes {kw}'
-            path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_model_arr)}_plot.png'
+            path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_{"stable_" if only_stable else ""}{"with_axis_" if with_axis else ""}plot.png'
         # case 3: combine different spellings
         # TODO: maybe include combining
         '''else:
@@ -193,8 +251,8 @@ def plot_sentiments(sentiword_model_arr):
                 # TODO: unite from both kws
                 epochs = sorted(set(kw_senti_df['epoch'].tolist()))
                 senti_values = []
-                for sentiword_model in sentiword_model_arr:
-                    kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_model'] == sentiword_model]
+                for sentiword_set in sentiword_set_arr:
+                    kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_set'] == sentiword_set]
                     senti_values_for_model = []
                     for epoch in epochs:
                         kw_senti_model_epoch_df = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]
@@ -208,7 +266,7 @@ def plot_sentiments(sentiword_model_arr):
                 senti = [sum(x) for x in zip(senti, kw_freqs)]
             indices_done.extend(combine_group_indices)
             title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
-            path = f"data/results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_model_arr)}_plot.png"'''
+            path = f"data/results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_plot.png"'''
         epochs_df = pd.read_csv('data/epochs.csv')
         written_forms = epochs_df.loc[epochs_df['epoch_id'].isin(epochs), 'written_form'].tolist()  # TODO: retrieve written forms only for relevant epochs
         # title
@@ -226,7 +284,7 @@ def plot_sentiments(sentiword_model_arr):
         # plot senti
         colors = ['r', 'b', 'g', 'y', 'm']
         for a in range(0, len(senti_values)):
-            plt.plot(x, senti_values[a], f'{colors[a]}-', label=sentiword_model_arr[a])
+            plt.plot(x, senti_values[a], f'{colors[a]}-', label=sentiword_set_arr[a])
         # show legend
         plt.legend()
         # set tight layout (so that nothing is cut out)
