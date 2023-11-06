@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # analyze first occurrences of keywords and save in csv
     '''experiment.create_kw_occurrences_and_merge_to_keyword_list()'''
     # plot frequencies
-    visualizations.plot_frequencies(include_expected=True)
+    '''visualizations.plot_frequencies(include_expected=True)'''
     # visualizations.plot_frequencies()
     '''visualizations.plot_comparing_frequencies()'''
     # save nearest neighbors without alignment
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     '''for senti_word_set in ['', 'religion', 'political', 'race', 'ethics']:
         experiment.analyse_senti_valuation_of_keywords(sentiword_set=senti_word_set, only_stable=False, with_axis=True)'''
     # plot valuations
-    '''visualizations.plot_sentiments(['religion', 'ethics'], only_stable=False, with_axis=True)'''
+    visualizations.plot_sentiments(['standard', 'political'], only_stable=False, with_axis=False, include_expected=True)
     # align models to make visualization of nearest neighbors over time
     '''embeddings.align_according_to_occurrences()'''
     # add model for epoch 8 for word "multikulturell"
@@ -55,4 +55,6 @@ if __name__ == '__main__':
     # save distance for each keyword between the aligned epochs
     '''experiment.compare_connotations_for_all_keywords()'''
     # plot these distances
-    '''visualizations.plot_comparing_connotations()'''
+    '''visualizations.plot_comparing_connotations(horizontal=True, smooth=True)'''
+    # plot similarities between certain groups of words over the years
+    '''visualizations.plot_exemplary_comparisons()'''

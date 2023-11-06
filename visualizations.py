@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns  # needed to be installed
 from sklearn.metrics.pairwise import cosine_similarity
-import sklearn
 from matplotlib import collections as mc
 import os
 
@@ -42,6 +41,17 @@ def transform_expected_freqs_values(all_freqs, relevant_expected_values):
             transformed_values.append(1000)
         else:
             transformed_values.append(step_size * val)
+    return transformed_values
+
+
+def transform_expected_senti_values(all_senti, expected_values):
+    transformed_values = []
+    max_senti = max(all_senti, key=abs)
+    for val in expected_values:
+        if val == 1000:
+            transformed_values.append(1000)
+        else:
+            transformed_values.append(val * abs(max_senti))
     return transformed_values
 
 
@@ -176,7 +186,7 @@ def plot_comparing_frequencies():
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.grid(True)
         # plot freqs
-        colors = ['r', 'b', 'g', 'o']
+        colors = ['r', 'b', 'g', 'y']
         for a in range(0, len(freqs)):
             plt.plot(x, freqs[a], f'{colors[a]}-', label=compared_kws[a])
         # show legend
@@ -202,10 +212,14 @@ def label_point(x, y, val, ax):
             ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
 
 
-def plot_sentiments(sentiword_set_arr, only_stable=False, with_axis=False):
+# TODO: improve modelling of expected values: +- should not be -0.7 but something higher! maybe around 0 instead
+#   but then asylant is not so accurate anymore :/
+def plot_sentiments(sentiword_set_arr, only_stable=False, with_axis=False, include_expected=False):
     senti_df = pd.read_csv(f'data/results/senti{"_stable" if only_stable else ""}{"_with_axis" if with_axis else ""}.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
+    if include_expected:
+        expected_df = pd.read_csv('data/expected_values.csv')
     # keywords = utils.load_keywords()
     keywords = keywords_df['keyword'].tolist()
     # combine_groups = keywords_df['combine_group'].tolist()
@@ -233,11 +247,17 @@ def plot_sentiments(sentiword_set_arr, only_stable=False, with_axis=False):
                     value = kw_senti_model_epoch_df['value'].iloc[0]
                     senti_values_for_model.append(value)
                 senti_values.append(senti_values_for_model)
+            if include_expected:
+                # get relevant info from expected_values for epochs and kw
+                expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw) & expected_df['epoch'].isin(epochs)]
+                expected_values = expected_kw_df['expected_valuation'].tolist()
+                expected_transformed_values = expected_values if not with_axis else transform_expected_senti_values(
+                    [item for sublist in senti_values for item in sublist], expected_values)
             indices_done.append(i)
             title = f'Wertungen des Schlagwortes {kw}'
             path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_{"stable_" if only_stable else ""}{"with_axis_" if with_axis else ""}plot.png'
         # case 3: combine different spellings
-        # TODO: maybe include combining
+        # TODO: maybe include combining or simplify method (probably using indices_done not necessary)
         '''else:
             # find all spellings for word
             combine_group_indices = [i for i, x in enumerate(combine_groups) if x == combine_group]
@@ -281,6 +301,16 @@ def plot_sentiments(sentiword_set_arr, only_stable=False, with_axis=False):
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.axhline(0, color='black', linewidth=2)
         plt.grid(True)
+        # plot expected values if wanted
+        if include_expected:
+            without_1000_vals = ignore_1000_vals(x, expected_transformed_values)
+            x_segments = without_1000_vals[0]
+            y_segments = without_1000_vals[1]
+            # only plots expected values if without_1000_vals contains useful info
+            if not all(not sublist for sublist in without_1000_vals):
+                plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', alpha=0.5, linewidth=70)
+                plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', linewidth=1,
+                     label='expected values with error band')
         # plot senti
         colors = ['r', 'b', 'g', 'y', 'm']
         for a in range(0, len(senti_values)):
@@ -380,32 +410,57 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
 
 
 # TODO: plots so sinnvoll? Schwer lesbar irgendwie! Evtl anderen Weg finden
-def plot_comparing_connotations():
+def plot_comparing_connotations(horizontal=False, smooth=False):
     distances_df = pd.read_csv('data/results/compared_connotations.csv')
     # epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     keywords = keywords_df['keyword'].tolist()
     for kw in keywords:
-        if keywords_df[keywords_df['keyword'] == kw].ignore.iloc[0] == 0:
+        # ignore words that do not appear often enough
+        if keywords_df[keywords_df['keyword'] == kw].ignore.iloc[0] == 0 and kw != "Wirtschaftsasylant":
             kw_distances_df = distances_df[distances_df['keyword'] == kw]
-            title = f'Entwicklung der Nearest Neighbors von {kw}'
-            path = f'data/results/plots/associations/dist_development_{kw}_plot.png'
-            written_forms = kw_distances_df['epoch_range_str'].tolist()
-            epochs = kw_distances_df['first_epoch'].tolist()
+            title = f'Entwicklung von {kw}'
+            path = f'data/results/plots/associations/dist_development_{kw}{"_horizontal" if horizontal else ""}{"_smooth" if smooth else ""}_plot.png'
+            if horizontal:
+                epochs_df = pd.read_csv('data/epochs.csv')
+                first_epochs = kw_distances_df['first_epoch'].tolist()
+                last_epoch = kw_distances_df['next_epoch'].tolist()[-1]
+                epochs = first_epochs + [last_epoch]
+                written_forms = [epochs_df[epochs_df['epoch_id'] == epoch]['written_form_short'].iloc[0] for epoch in epochs]
+            else:
+                written_forms = kw_distances_df['epoch_range_str'].tolist()
+                epochs = kw_distances_df['first_epoch'].tolist()
             distances = kw_distances_df['distance'].tolist()
             # title
             plt.title(title)
             # prepare axes
-            x = np.arange(len(epochs))
             ax = plt.gca()
             ax.set_xlim(0, len(epochs))
-            plt.xticks(x, written_forms)
+            plt.xticks(epochs, written_forms)
             plt.xlabel("Epochen")
-            plt.ylabel('quantifizierte Entwicklung der Nearest Neighbors')
+            plt.ylabel('Abstand/Unterschied zwischen dem Wort in den jeweiligen Epochen')
             plt.rc('grid', linestyle=':', color='black', linewidth=1)
             plt.grid(True)
             # plot distances
-            plt.plot(x, distances, 'r-')
+            if horizontal:
+                if smooth:
+                    x = [((epochs[i] + epochs[i + 1])/2) for i in range(len(epochs) - 1)]
+                    x = x + [((epochs[i] + epochs[i + 1])/2 + 0.3) for i in range(len(epochs) - 1)]
+                    x = x + [((epochs[i] + epochs[i + 1])/2 - 0.3) for i in range(len(epochs) - 1)]
+                    x.sort()
+                    distances = [val for val in distances for _ in range(3)]
+                    # Create a new set of x values with more points for smoother lines
+                    x_smooth = np.linspace(min(x), max(x), 300)
+                    # Use spline interpolation to smoothen the lines
+                    # spline = make_interp_spline(x, distances, bc_type="natural")
+                    # y_smooth = spline(x_smooth)
+                    y_smooth = np.interp(x_smooth, x, distances)
+                    ax.plot(x_smooth, y_smooth, color='blue')
+                else:
+                    for i in range(len(epochs) - 1):
+                        ax.hlines(distances[i], epochs[i], epochs[i + 1], color='blue')
+            else:
+                plt.plot(epochs, distances, 'r-')
             # set tight layout (so that nothing is cut out)
             plt.tight_layout()
             # save diagram
@@ -414,6 +469,67 @@ def plot_comparing_connotations():
             fig.savefig(path)
             plt.close(fig)
             print(f"plot for {kw} saved")
+
+
+def plot_exemplary_comparisons():
+    # TODO: maybe move all experimental calculations to experiment.py
+    # retrieve keywords that should be compared
+    df = pd.read_csv('data/keyword_comparing.csv')
+    epochs_df = pd.read_csv('data/epochs.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
+    # iterate these compare groups
+    for index, row in df.iterrows():
+        # from main word, calculate the similarity for each other word for each epoch
+        main_word = row.main_word
+        # TODO: other words könnten ja auch nicht-keywords sein, die ich einfach gerne aus dem Pool des Wissens heraus testen würde!
+        other_words = [row[column] for column in ['second_word', 'third_word', 'fourth_word', 'fifth_word'] if pd.notna(row[column])]
+        # get necessary epochs
+        kw_row = keywords_df[keywords_df['keyword'] == main_word].iloc[0]
+        necessary_epochs = [item for item in range(kw_row.first_occ_epoch, kw_row.last_occ_epoch + 1) if
+                            str(item) not in kw_row.loophole]
+        # initialize result variable
+        results = []
+        # doing this, also take care of cases where one of the words does not exist in epoch
+        for w in other_words:
+            results.append([])
+            for epoch in necessary_epochs:
+                word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors')
+                try:
+                    val = word_vectors.similarity(main_word, w)
+                except KeyError:
+                    print(f"One of the words {main_word}, {w} does not exist in epoch {epoch}!")
+                    val = None
+                results[other_words.index(w)].append(val)
+        # plot as many lines as other words
+        title = f'Entwicklung im Verhältnis zum Schlagwort {main_word}'
+        path = f'data/results/plots/associations/comparing_development_{main_word}_{"_".join(other_words)}_plot.png'
+        filtered_epochs_df = epochs_df[epochs_df['epoch_id'].isin(necessary_epochs)]
+        written_forms = filtered_epochs_df['written_form'].tolist()
+        # title
+        plt.title(title)
+        # prepare axes
+        x = np.arange(len(necessary_epochs))
+        ax = plt.gca()
+        ax.set_xlim(0, len(necessary_epochs))
+        plt.xticks(x, written_forms)
+        plt.xlabel("Epochen")
+        plt.ylabel(f'Cosine Similarity zum Wort {main_word}')
+        plt.rc('grid', linestyle=':', color='black', linewidth=1)
+        plt.grid(True)
+        colors = ['r', 'b', 'g', 'y']
+        # plot similarities
+        for i in range(0, len(other_words)):
+            plt.plot(x, results[i], f'{colors[i]}-', label=other_words[i])
+        # plot legend
+        plt.legend()
+        # set tight layout (so that nothing is cut out)
+        plt.tight_layout()
+        # save diagram
+        fig = plt.gcf()
+        fig.set_size_inches(10, 8)
+        fig.savefig(path)
+        plt.close(fig)
+        print(f"plot saved")
 
 
 # words not given in corpus:

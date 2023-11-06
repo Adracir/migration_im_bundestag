@@ -11,12 +11,6 @@ import numpy as np
 from scipy.spatial.distance import cosine
 
 
-# TODO: nearest neighbors
-# TODO: alignment & diachronic visualizations
-# TODO: positive/negative aspect of words. maybe use SentiWord lists of esp. positive and negative words and measure
-#  distance/similarity
-
-
 def prepared_corpus_to_wordlist(corpus_name):
     corpus_unflattened = utils.unpickle(corpus_name)
     # flatten corpus to one layered list
@@ -27,13 +21,6 @@ def prepared_corpus_to_wordlist(corpus_name):
 def find_counts_for_keywords(count_dict):
     keywords = utils.load_keywords()
     return {k: count_dict.get(k, 0) for k in keywords}
-
-
-# TODO: avoid double executions, most of this is already done in prepared_corpus_to_count_dict
-'''def count_total_words_in_epoch_corpus(epoch):
-    corpus_unflattened = utils.unpickle(f"data/corpus/epoch{epoch}_prepared_lemma")
-    wordlist = list(itertools.chain(*corpus_unflattened))
-    return len(wordlist)'''
 
 
 def save_frequency_info_in_csv():
@@ -132,6 +119,7 @@ def save_nearest_neighbors(aligned=False):
                 print(f"Keyerror: Key '{kw}' not present in vocabulary for epoch {epoch}")
 
 
+# TODO: maybe delete, I think it's never used
 def comparing_connotations(model1, model2, word, k=10, verbose=True):
     """ copied from https://gensim.narkive.com/ZsBAPGm4/11863-word2vec-alignment
     calculates a relative semantic shift between a word in two different models
@@ -200,9 +188,6 @@ def compare_connotations_for_all_keywords():
                 utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
 
 
-            # TODO: maybe also calculate and plot distances for pairs or triples of words, as in Braun
-
-
 # adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
 def s(w, A, B, word_vectors):
     """Calculate bias score of attribute word w and two target sets A and B
@@ -260,7 +245,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", only_stable=False, wit
                 if with_axis:
                     senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
                 else:
-                    # calculate bias value of word with s()
+                    # calculate bias value of word with WEAT method
                     senti = s(kw, pos_words, neg_words, word_vectors)
                 # save value in csv
                 utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_set if sentiword_set else "standard", senti], mode="a")
