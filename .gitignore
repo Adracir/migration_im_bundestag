@@ -7,5 +7,6 @@ data/*
 !data/keywords_merged.csv
 !data/sentiwords.csv
 !data/political_sentiwords.csv
-!data/race_sentiwords.csv
+!data/expected_values.csv
+!data/keyword_comparing.csv
 !data/results

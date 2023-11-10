@@ -3,6 +3,9 @@ import embeddings
 import experiment
 import visualizations
 import utils
+from gensim.models import KeyedVectors
+from collections import Counter
+import math
 
 
 if __name__ == '__main__':
@@ -24,12 +27,30 @@ if __name__ == '__main__':
     # TODO: alignment first?
     # count frequencies and save in csv
     '''experiment.save_frequency_info_in_csv()'''
-    # analyze first occurrences of keywords and save in csv
+    # get most frequent word & its occurrence for each epoch
+    '''for epoch in range(1, 9):
+        wv = KeyedVectors.load(f'data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors')
+        most_frequent_word = wv.index_to_key[0]
+        wordlist = experiment.prepared_corpus_to_wordlist(f"data/corpus/epoch{epoch}_prepared_lemma")
+        dict = Counter(wordlist)
+        print(f"Epoch {epoch}: most frequent word '{most_frequent_word}' appears {dict.get(most_frequent_word, 0)} times!")'''
+    # add frequency classes to freqs csv
+    '''experiment.determine_frequency_classes_for_keywords()'''
+    # print number of freq classes for each epoch
+    '''highest_freq_for_epochs = [2874025, 1927682, 2229283, 3214476, 3232228, 4930583, 2840717, 987578]
+    for epoch in range(1, 9):
+        print(f"Epoch {epoch}: {round(math.log2(highest_freq_for_epochs[epoch - 1] / 1))}")
+    max_freq_class = [21, 21, 21, 22, 22, 22, 21, 20]'''
+    # analyze first occurrences of keywords and save in keywords csv
     '''experiment.create_kw_occurrences_and_merge_to_keyword_list()'''
+    # plot corpus frequency distribution
+    '''visualizations.plot_frequency_distribution_for_corpora()'''
     # plot frequencies
-    '''visualizations.plot_frequencies(include_expected=True)'''
+    visualizations.plot_frequencies(include_expected=True, absolute=True, logarithmic=True)
     # visualizations.plot_frequencies()
     '''visualizations.plot_comparing_frequencies()'''
+    # plot frequency classes
+    '''visualizations.plot_frequency_classes(include_expected=True, absolute=True)'''
     # save nearest neighbors without alignment
     '''experiment.save_nearest_neighbors()'''
     # possibility to analyse some words more closely, see their context in the corpus
@@ -37,12 +58,11 @@ if __name__ == '__main__':
     # evaluate sentiment models
     '''experiment.evaluate_senti_words_stability(['', 'race', 'religion', 'political', 'ethics'])'''
     # analyse sentiment of words
-    # TODO: maybe omit some less indicative sentiword_sets!
     '''experiment.analyse_senti_valuation_of_keywords(sentiword_set="religion")'''
     '''for senti_word_set in ['', 'religion', 'political', 'race', 'ethics']:
-        experiment.analyse_senti_valuation_of_keywords(sentiword_set=senti_word_set, only_stable=False, with_axis=True)'''
+        experiment.analyse_senti_valuation_of_keywords(sentiword_set=senti_word_set, with_axis=True)'''
     # plot valuations
-    visualizations.plot_sentiments(['standard', 'political'], only_stable=False, with_axis=False, include_expected=True)
+    '''visualizations.plot_sentiments(['standard', 'political'], with_axis=True, include_expected=False)'''
     # align models to make visualization of nearest neighbors over time
     '''embeddings.align_according_to_occurrences()'''
     # add model for epoch 8 for word "multikulturell"
@@ -50,8 +70,9 @@ if __name__ == '__main__':
     '''embeddings.align_two_models(7, 8, 4)'''
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
-    # TODO: maybe use this csv for the visualization, too! but it doesn't contain any info on the vectors themselves
-    '''visualizations.plot_tsne_according_to_occurrences(k=12, keep_doubles=False)'''
+    # TODO: compare nearest neighbors from plot with those from csvs
+    # TODO: try with different parameters till it looks good. also with doubles
+    '''visualizations.plot_tsne_according_to_occurrences(k=12, perplexity=5, keep_doubles=False, iter=5000)'''
     # save distance for each keyword between the aligned epochs
     '''experiment.compare_connotations_for_all_keywords()'''
     # plot these distances
