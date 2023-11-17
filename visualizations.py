@@ -14,7 +14,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.integrate import quad
 
 
-# TODO: find better names for some methods... blabla comparing is not very distinct
+# Helper methods
 def ignore_1000_vals(x, y):
     x_segments = []
     y_segments = []
@@ -59,9 +59,8 @@ def transform_expected_senti_values(all_senti, expected_values):
     return transformed_values
 
 
-# TODO: allow plotting expected values as absolute values as well as "Verlauf" of the graph
-#  with values transformed to fit word values. find accurate naming of graphs for this.
-def plot_frequencies(include_expected=False, absolute=False, logarithmic=False):
+# Frequency methods
+def plot_frequencies(include_expected=True, absolute=False):
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
@@ -85,12 +84,8 @@ def plot_frequencies(include_expected=False, absolute=False, logarithmic=False):
             kw = keywords[i]
             kw_freqs_df = freqs_df[freqs_df['keyword'] == kw]
             freqs = kw_freqs_df['freq'].tolist()
-            if logarithmic:
-                freqs = np.log1p(freqs)
             if include_expected:
                 reference_values = freqs if not absolute else freqs_df['freq'].tolist()
-                if logarithmic:
-                    reference_values = np.log1p(reference_values)
                 # get relevant info from expected_values for epochs and kw
                 expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw)]
                 expected_values = expected_kw_df['expected_freq'].tolist()
@@ -111,12 +106,8 @@ def plot_frequencies(include_expected=False, absolute=False, logarithmic=False):
                 kw_freqs = kw_freqs_df['freq'].tolist()
                 # save sum of all kw_freqs into freqs
                 freqs = [sum(x) for x in zip(freqs, kw_freqs)]
-                if logarithmic:
-                    freqs = np.log1p(freqs)
             if include_expected:
                 reference_values = freqs_df['freq'].tolist() if absolute else freqs
-                if logarithmic:
-                    reference_values = np.log1p(reference_values)
                 # get relevant info from expected_values for epochs and kw
                 expected_kw_df = expected_df[expected_df['keyword'].str.contains(keywords[combine_group_indices[0]])]
                 expected_values = expected_kw_df['expected_freq'].tolist()
@@ -180,94 +171,6 @@ def plot_frequency_distribution_for_corpora():
         print(f'epoch {epoch} plotted')
 
 
-def convert_freq_classes_to_plot(classes, class_epochs):
-    max_classes_per_epoch = [21, 21, 21, 22, 22, 22, 21, 20]
-    plot_classes = []
-    for c in classes:
-        if c == 1000:
-            plot_classes.append(0)
-        else:
-            epoch = class_epochs[classes.index(c)]
-            max_class_for_epoch = max_classes_per_epoch[epoch - 1]
-            class_dict_asc = list(range(1, max_class_for_epoch + 1))
-            class_dict_desc = sorted(class_dict_asc, reverse=True)
-            class_index = class_dict_asc.index(c)
-            reversed_class = class_dict_desc[class_index]
-            relative_class = reversed_class/max_class_for_epoch
-            plot_classes.append(relative_class)
-    return plot_classes
-
-
-def plot_frequency_classes(include_expected=False, absolute=False):
-    freqs_df = pd.read_csv('data/results/freqs_and_classes.csv')
-    epochs_df = pd.read_csv('data/epochs.csv')
-    keywords_df = pd.read_csv('data/keywords_merged.csv')
-    if include_expected:
-        expected_df = pd.read_csv('data/expected_values.csv')
-        if absolute:
-            all_classes = freqs_df['freq_class'].tolist()
-            all_epochs = freqs_df['epoch'].tolist()
-            all_transformed_class_values = convert_freq_classes_to_plot(all_classes, all_epochs)
-    # keywords = utils.load_keywords()
-    keywords = keywords_df['keyword'].tolist()
-    ignoring = keywords_df['ignore'].tolist()
-    epochs = epochs_df['epoch_id'].tolist()
-    # TODO: Obacht! freqs and keywords and epochs should be at same status for this to work!
-    #  Maybe implement cleverer way
-    indices_done = []
-    for i in range(0, len(keywords)):
-        # case 1: word has already been plotted
-        if i in indices_done or ignoring[i]:
-            continue
-        # case 2: word does not need to be combined with other spelling and has not been plotted yet
-        kw = keywords[i]
-        kw_freqs_df = freqs_df[freqs_df['keyword'] == kw]
-        classes = kw_freqs_df['freq_class'].tolist()
-        class_epochs = kw_freqs_df['epoch'].tolist()
-        plot_classes = convert_freq_classes_to_plot(classes, class_epochs)
-        if include_expected:
-            reference_values = all_transformed_class_values if absolute else plot_classes
-            # get relevant info from expected_values for epochs and kw
-            expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw)]
-            expected_values = expected_kw_df['expected_freq'].tolist()
-            # transform values using all existing freqs values
-            transformed_exp_values = transform_expected_freqs_values(reference_values, expected_values)
-        title = f'Häufigkeiten des Schlagwortes {kw}'
-        path = f'data/results/plots/frequencies/freq_class_{kw}{"_with_expected" if include_expected else ""}{"_abs_ref" if absolute else "_rel_ref"}_plot.png'
-        written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
-        # title
-        plt.title(title)
-        # prepare axes
-        x = np.arange(len(epochs))
-        ax = plt.gca()
-        ax.set_xlim(0, len(epochs))
-        plt.xticks(x, written_forms)
-        plt.xlabel("Epochen")
-        plt.ylabel('relative Häufigkeiten im Korpus')
-        plt.rc('grid', linestyle=':', color='black', linewidth=1)
-        plt.grid(True)
-        # plot a grey area for the expected values
-        if include_expected:
-            without_1000_vals = ignore_1000_vals(x, transformed_exp_values)
-            x_segments = without_1000_vals[0]
-            y_segments = without_1000_vals[1]
-            plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', alpha=0.5, linewidth=70)
-            plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', linewidth=1,
-                 label='expected values with error band')
-        # plot freqs
-        plt.plot(x, plot_classes, 'r-', label="frequencies")
-        # plot legend
-        plt.legend()
-        # set tight layout (so that nothing is cut out)
-        plt.tight_layout()
-        # save diagram
-        fig = plt.gcf()
-        fig.set_size_inches(10, 8)
-        fig.savefig(path)
-        plt.close(fig)
-        print(f"plot {i} saved")
-
-
 def plot_comparing_frequencies():
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
@@ -327,17 +230,9 @@ def plot_comparing_frequencies():
         print(f"plot {i} saved")
 
 
-# Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
-# label points with words
-def label_point(x, y, val, ax):
-    a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
-    for i, point in a.iterrows():
-        if i % 2 == 0:
-            ax.text(point['x'] + .02, point['y'], str(point['val']))
-        else:
-            ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
-
-
+# TODO: möglich, auch für Wertungen und Konnotationen comparing und combining der Wörter zu betreiben? Evtl alle
+#  Informationen zu Kombinationen etc. sprechend in keywords_merged.csv speichern!
+# Sentiments/Valuation
 # TODO: Idee: Expected Values immer absolut einzeichnen, und zusätzlich noch den Plot ohne with_expected speichern.
 def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=False, absolute=False):
     senti_df = pd.read_csv(f'data/results/senti{"_with_axis" if with_axis else ""}.csv')
@@ -415,8 +310,20 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=False, 
             print(f"plot for {kw} saved")
 
 
+# Connotations
+# Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
+# label points with words
+def label_point(x, y, val, ax):
+    a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+    for i, point in a.iterrows():
+        if i % 2 == 0:
+            ax.text(point['x'] + .02, point['y'], str(point['val']))
+        else:
+            ax.text(point['x'] + .02, point['y'] - .02, str(point['val']))
+
+
 # TODO: improve representation so that it becomes more meaningful
-# TODO: IMPORTANT: where is the code from???
+# Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
 # maybe not much more useful than lists of nearest neighbors :/
 def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
     # TODO: take care that legend shows epochs in correct order!
@@ -499,26 +406,21 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         plt.close()
 
 
-def bernstein_poly(i, n, t):
-    """
-    Berechnet den Bernstein-Polynomwert B_{i,n}(t).
-    """
-    return np.math.comb(n, i) * ( t**(n-i) ) * ( (1-t)**i )
+def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
+    # iterate rows in keywords_merged.csv
+    df = pd.read_csv('data/keywords_merged.csv')
+    for index, row in df.iterrows():
+        # if word never occurs, ignore
+        if row.first_occ_epoch != 0:
+            # check if resp. start_epoch-folder exists
+            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+            if os.path.isdir(aligned_base_folder):
+                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
+                plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, k, perplexity, mode_gensim, keep_doubles, iter)
 
 
-def bezier_curve(control_points, t):
-    """
-    Berechnet die Punkte auf der Bezier-Kurve für den Parameter t.
-    """
-    n = len(control_points) - 1
-    x = sum(bernstein_poly(i, n, t) * control_points[i, 0] for i in range(n + 1))
-    y = sum(bernstein_poly(i, n, t) * control_points[i, 1] for i in range(n + 1))
-    return x, y
-
-
-# TODO: plots so sinnvoll? Schwer lesbar irgendwie! Evtl anderen Weg finden
-def plot_comparing_connotations(horizontal=False, smooth=False):
-    distances_df = pd.read_csv('data/results/compared_connotations.csv')
+def plot_cosine_development_each_word():
+    distances_df = pd.read_csv('data/results/cosine_developments.csv')
     # epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     keywords = keywords_df['keyword'].tolist()
@@ -527,16 +429,12 @@ def plot_comparing_connotations(horizontal=False, smooth=False):
         if keywords_df[keywords_df['keyword'] == kw].ignore.iloc[0] == 0 and kw != "Wirtschaftsasylant":
             kw_distances_df = distances_df[distances_df['keyword'] == kw]
             title = f'Entwicklung von {kw}'
-            path = f'data/results/plots/associations/dist_development_{kw}{"_horizontal" if horizontal else ""}{"_smooth" if smooth else ""}_spline_plot.png'
-            if horizontal:
-                epochs_df = pd.read_csv('data/epochs.csv')
-                first_epochs = kw_distances_df['first_epoch'].tolist()
-                last_epoch = kw_distances_df['next_epoch'].tolist()[-1]
-                epochs = first_epochs + [last_epoch]
-                written_forms = [epochs_df[epochs_df['epoch_id'] == epoch]['written_form_short'].iloc[0] for epoch in epochs]
-            else:
-                written_forms = kw_distances_df['epoch_range_str'].tolist()
-                epochs = kw_distances_df['first_epoch'].tolist()
+            path = f'data/results/plots/associations/dist_development_{kw}_plot.png'
+            epochs_df = pd.read_csv('data/epochs.csv')
+            first_epochs = kw_distances_df['first_epoch'].tolist()
+            last_epoch = kw_distances_df['next_epoch'].tolist()[-1]
+            epochs = first_epochs + [last_epoch]
+            written_forms = [epochs_df[epochs_df['epoch_id'] == epoch]['written_form_short'].iloc[0] for epoch in epochs]
             distances = kw_distances_df['distance'].tolist()
             # title
             plt.title(title)
@@ -545,41 +443,20 @@ def plot_comparing_connotations(horizontal=False, smooth=False):
             ax.set_xlim(0, len(epochs))
             plt.xticks(epochs, written_forms)
             plt.xlabel("Epochen")
-            plt.ylabel('Abstand/Unterschied zwischen dem Wort in den jeweiligen Epochen')
+            plt.ylabel('Kosinus-Abstand zwischen dem Wort in den jeweiligen Epochen')
             plt.rc('grid', linestyle=':', color='black', linewidth=1)
             plt.grid(True)
-            # plot distances
-            if horizontal:
-                if smooth:
-                    x = [((epochs[i] + epochs[i + 1])/2) for i in range(len(epochs) - 1)]
-                    x = x + [((epochs[i] + epochs[i + 1])/2 + 0.3) for i in range(len(epochs) - 1)]
-                    x = x + [((epochs[i] + epochs[i + 1])/2 - 0.3) for i in range(len(epochs) - 1)]
-                    x.sort()
-                    distances = [val for val in distances for _ in range(3)]
-                    # Create a new set of x values with more points for smoother lines
-                    # x_smooth = np.linspace(min(x), max(x), 300)
-                    # Use spline interpolation to smoothen the lines
-                    # spline = make_interp_spline(x, distances, k=1)
-                    # y_smooth = spline(x_smooth)
-                    # linear interpolation
-                    # y_smooth = np.interp(x_smooth, x, distances)
-                    # ax.plot(x_smooth, y_smooth, color='blue', solid_capstyle='round', solid_joinstyle='round')
-                    # Bezier-Kurven
-                    # Kontrollpunkte für die Bezier-Kurve
-                    control_points = np.column_stack((x, distances))
-
-                    # Werte für den Parameter t
-                    t_values = np.linspace(0, 1, 300)
-
-                    # Bezier-Kurvenpunkte berechnen
-                    curve_points = np.array([bezier_curve(control_points, t) for t in t_values])
-                    # Erstellen Sie das Diagramm
-                    plt.plot(curve_points[:, 0], curve_points[:, 1], linestyle='-')
-                else:
-                    for i in range(len(epochs) - 1):
-                        ax.hlines(distances[i], epochs[i], epochs[i + 1], color='blue')
-            else:
-                plt.plot(epochs, distances, 'r-')
+            # prepare data for plotting, making horizontal lines that are connected
+            x = [((epochs[i] + epochs[i + 1])/2) for i in range(len(epochs) - 1)]
+            x = x + [(epochs[i] + 0.1) for i in range(len(epochs) - 1)]
+            x = x + [((epochs[i + 1]) - 0.1) for i in range(len(epochs) - 1)]
+            x.sort()
+            distances = [val for val in distances for _ in range(3)]
+            # Create a new set of x values with more points for smoother lines
+            x_smooth = np.linspace(min(x), max(x), 300)
+            # linear interpolation
+            y_smooth = np.interp(x_smooth, x, distances)
+            ax.plot(x_smooth, y_smooth, color='blue', solid_capstyle='round', solid_joinstyle='round')
             # set tight layout (so that nothing is cut out)
             plt.tight_layout()
             # save diagram
@@ -670,19 +547,6 @@ def plot_exemplary_comparisons():
 # Integration, multikulturell, Einwanderungsland --> 2
 # evtl. noch Scheinasylant, Wirtschaftsasylant, Asylmiss[ß]brauch, Wirtschaftsflüchtling
 # und evtl. noch Flüchtling, Asylant
-
-
-def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
-    # iterate rows in keywords_merged.csv
-    df = pd.read_csv('data/keywords_merged.csv')
-    for index, row in df.iterrows():
-        # if word never occurs, ignore
-        if row.first_occ_epoch != 0:
-            # check if resp. start_epoch-folder exists
-            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
-            if os.path.isdir(aligned_base_folder):
-                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
-                plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, k, perplexity, mode_gensim, keep_doubles, iter)
 
 
 # plot_words_from_time_epochs_tsne([1, 2], target_word='Flüchtling')

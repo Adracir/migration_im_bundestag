@@ -46,9 +46,10 @@ if __name__ == '__main__':
     # plot corpus frequency distribution
     '''visualizations.plot_frequency_distribution_for_corpora()'''
     # plot frequencies
-    visualizations.plot_frequencies(include_expected=True, absolute=True, logarithmic=True)
+    '''visualizations.plot_frequencies(include_expected=True, absolute=True)'''
     # visualizations.plot_frequencies()
     '''visualizations.plot_comparing_frequencies()'''
+    # TODO: maybe leave out?
     # plot frequency classes
     '''visualizations.plot_frequency_classes(include_expected=True, absolute=True)'''
     # save nearest neighbors without alignment
@@ -72,10 +73,10 @@ if __name__ == '__main__':
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: compare nearest neighbors from plot with those from csvs
     # TODO: try with different parameters till it looks good. also with doubles
-    '''visualizations.plot_tsne_according_to_occurrences(k=12, perplexity=5, keep_doubles=False, iter=5000)'''
+    '''visualizations.plot_tsne_according_to_occurrences(k=10, perplexity=5, keep_doubles=True, iter=5000)'''
     # save distance for each keyword between the aligned epochs
-    '''experiment.compare_connotations_for_all_keywords()'''
+    '''experiment.calculate_cosine_development_for_each_keyword()'''
     # plot these distances
-    '''visualizations.plot_comparing_connotations(horizontal=True, smooth=True)'''
+    '''visualizations.plot_cosine_development_each_word()'''
     # plot similarities between certain groups of words over the years
     '''visualizations.plot_exemplary_comparisons()'''

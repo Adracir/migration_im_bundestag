@@ -181,13 +181,13 @@ def comparing_connotations(model1, model2, word, k=10, verbose=True):
     return dist
 
 
-def compare_connotations_for_all_keywords():
+def calculate_cosine_development_for_each_keyword():
     # load keywords and epochs
     df = pd.read_csv('data/keywords_merged.csv')
     keywords = df['keyword'].tolist()
     epochs_df = pd.read_csv('data/epochs.csv')
     # prepare output csv
-    output_csv_path = 'data/results/compared_connotations.csv'
+    output_csv_path = 'data/results/cosine_developments.csv'
     utils.write_info_to_csv(output_csv_path, ['keyword', 'first_epoch', 'next_epoch', 'epoch_range_str', 'distance'])
     # depending on occurrences, get necessary models/epochs
     for kw in keywords:
@@ -215,15 +215,15 @@ def compare_connotations_for_all_keywords():
 
 
 # adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
-def s(w, A, B, word_vectors):
+def weat(w, A, B, word_vectors):
     """Calculate bias score of attribute word w and two target sets A and B
     :param w: attribute word
     :param A: target set
     :param B: other target set
     :param word_vectors: keyedvectors to use"""
-    cos_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
-    cos_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
-    return np.mean(cos_wa) - np.mean(cos_wb)
+    sim_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
+    sim_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
+    return np.mean(sim_wa) - np.mean(sim_wb)
 
 
 def senti_with_axis(w, A, B, wordvectors):
@@ -267,7 +267,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
                     senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
                 else:
                     # calculate bias value of word with WEAT method
-                    senti = s(kw, pos_words, neg_words, word_vectors)
+                    senti = weat(kw, pos_words, neg_words, word_vectors)
                 # save value in csv
                 utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_set if sentiword_set else "standard", senti], mode="a")
             except KeyError:
