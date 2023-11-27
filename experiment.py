@@ -30,7 +30,7 @@ def total_word_frequency_distribution(epoch):
 
 
 def save_frequency_info_in_csv():
-    utils.write_info_to_csv('data/results/freqs.csv', ['epoch', 'keyword', 'count', 'freq'])
+    utils.write_info_to_csv('data/results/freqs.csv', ['epoch', 'keyword', 'count', 'freq', 'pMW'])
     for epoch in range(1, 9):
         print(f'epoch {epoch}: simplifying corpus for counting operations')
         wordlist = prepared_corpus_to_wordlist(f"data/corpus/epoch{epoch}_prepared_lemma")
@@ -41,7 +41,9 @@ def save_frequency_info_in_csv():
         for kw in count_dict.keys():
             count = count_dict[kw]
             freq = count/total_words
-            utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq], 'a')
+            # calculate frequency per million words
+            pMW = freq * 1000000
+            utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq, pMW], 'a')
 
 
 # given list highest_freq_for_epochs contains the count of the most frequent word in the respective epoch corpus, 'der'
@@ -103,6 +105,103 @@ def create_kw_occurrences_and_merge_to_keyword_list():
     df2 = pd.read_csv('data/results/kw_occurrences.csv')
     merged_df = df1.merge(df2, on='keyword', how='outer')
     merged_df.to_csv('data/keywords_merged.csv', index=False)
+
+
+# TODO: maybe visualize!
+def calculate_mean_frequency_over_all_epochs():
+    # prepare output
+    output_file_path = 'data/results/mean_freqs.csv'
+    utils.write_info_to_csv(output_file_path, ['word', 'mean_freq', 'rank'])
+    # iterate freqs.csv
+    df = pd.read_csv('data/results/freqs.csv')
+    keywords = list(set(df['word'].tolist()))
+    # for each kw, get pMW and mean
+    results = [{'word': kw, 'mean_freq': np.mean(np.array(df[df['word'] == kw]['pMW'].tolist())) } for kw in keywords]
+    # Get indices that would sort mean_freqs
+    sorted_indices = np.argsort([results[i]['mean_freq'] for i in range(len(results))])[::-1]
+    # Create a new array with ranks
+    for i, idx in enumerate(sorted_indices):
+        results[idx]['rank'] = i + 1
+    # save in new df/csv
+    for elem in results:
+        utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_freq'], elem['rank']], mode='a')
+
+
+# adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
+def weat(w, A, B, word_vectors):
+    """Calculate bias score of attribute word w and two target sets A and B
+    :param w: attribute word
+    :param A: target set
+    :param B: other target set
+    :param word_vectors: keyedvectors to use"""
+    sim_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
+    sim_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
+    return np.mean(sim_wa) - np.mean(sim_wb)
+
+
+def senti_with_axis(w, A, B, wordvectors):
+    # Berechnen Sie den Durchschnittsvektor der positiven und negativen Ausgangswörter
+    positive_vector = sum(wordvectors[word] for word in A if word in wordvectors.index_to_key) / len(A)
+    negative_vector = sum(wordvectors[word] for word in B if word in wordvectors.index_to_key) / len(B)
+    # Berechnen Sie die Achse, die der Polarität entspricht
+    polarity_axis = positive_vector - negative_vector
+    # Berechnen Sie den Polaritätswert für das Zielwort
+    polarity_score = sum(wordvectors[w] * polarity_axis)
+    return polarity_score
+
+
+def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
+    print("preparing sentiment analysis")
+    # load keywords
+    keywords = utils.load_keywords()
+    # load sentiwords according to choice
+    senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords.csv"
+    df = pd.read_csv(senti_file_path)
+    # group sentiwords by value (A: +1/B: -1)
+    df_pos = df[df["value"] == 1]
+    df_neg = df[df["value"] == -1]
+    pos_words = df_pos["word"].tolist()
+    neg_words = df_neg["word"].tolist()
+    # prepare output csv
+    output_file_path = f"data/results/senti{'_with_axis' if with_axis else ''}.csv"
+    if not os.path.exists(output_file_path):
+        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
+    # iterate keywords
+    for kw in keywords:
+        print(f"Analysing key word {kw}")
+        # for keyword: iterate epochs
+        # TODO: maybe get epochs programmatically??
+        for epoch in range(1, 9):
+            # get associated wordvectors
+            word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
+            # TODO: maybe ignore keywords that have ignore= 1?
+            try:
+                if with_axis:
+                    senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
+                else:
+                    # calculate bias value of word with WEAT method
+                    senti = weat(kw, pos_words, neg_words, word_vectors)
+                # save value in csv
+                utils.write_info_to_csv(output_file_path,
+                                        [kw, epoch, sentiword_set if sentiword_set else "standard", senti],
+                                        mode="a")
+            except KeyError:
+                print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
+
+
+def normalize_with_axis_senti_and_save_to_csv():
+    senti_df = pd.read_csv('data/results/senti_with_axis.csv')
+    freqs_df = pd.read_csv('data/results/freqs.csv')
+    normalized = []
+    for index, row in senti_df.iterrows():
+        kw = row['word']
+        epoch = row['epoch']
+        senti = row['value']
+        freq = freqs_df[(freqs_df['word'] == kw) & (freqs_df['epoch'] == epoch)]['pMW'].iloc[0]
+        normalized.append(senti/freq)
+    senti_df['normalized_by_freq'] = normalized
+    senti_df.to_csv('data/results/senti_with_axis.csv')
+
 
 
 # TODO: maybe ignore words in epoch that appear seldom, e.g. less than 1e-06
@@ -214,61 +313,4 @@ def calculate_cosine_development_for_each_keyword():
                 utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
 
 
-# adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
-def weat(w, A, B, word_vectors):
-    """Calculate bias score of attribute word w and two target sets A and B
-    :param w: attribute word
-    :param A: target set
-    :param B: other target set
-    :param word_vectors: keyedvectors to use"""
-    sim_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
-    sim_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
-    return np.mean(sim_wa) - np.mean(sim_wb)
-
-
-def senti_with_axis(w, A, B, wordvectors):
-    # Berechnen Sie den Durchschnittsvektor der positiven und negativen Ausgangswörter
-    positive_vector = sum(wordvectors[word] for word in A if word in wordvectors.index_to_key) / len(A)
-    negative_vector = sum(wordvectors[word] for word in B if word in wordvectors.index_to_key) / len(B)
-    # Berechnen Sie die Achse, die der Polarität entspricht
-    polarity_axis = positive_vector - negative_vector
-    # Berechnen Sie den Polaritätswert für das Zielwort
-    polarity_score = sum(wordvectors[w] * polarity_axis)
-    return polarity_score
-
-
-def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
-    print("preparing sentiment analysis")
-    # load keywords
-    keywords = utils.load_keywords()
-    # load sentiwords according to choice
-    senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords.csv"
-    df = pd.read_csv(senti_file_path)
-    # group sentiwords by value (A: +1/B: -1)
-    df_pos = df[df["value"] == 1]
-    df_neg = df[df["value"] == -1]
-    pos_words = df_pos["word"].tolist()
-    neg_words = df_neg["word"].tolist()
-    # prepare output csv
-    output_file_path = f"data/results/senti{'_with_axis' if with_axis else ''}.csv"
-    if not os.path.exists(output_file_path):
-        utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
-    # iterate keywords
-    for kw in keywords:
-        print(f"Analysing key word {kw}")
-        # for keyword: iterate epochs
-        # TODO: maybe get epochs programmatically??
-        for epoch in range(1, 9):
-            # get associated wordvectors
-            word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
-            # TODO: maybe ignore keywords that have ignore= 1?
-            try:
-                if with_axis:
-                    senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
-                else:
-                    # calculate bias value of word with WEAT method
-                    senti = weat(kw, pos_words, neg_words, word_vectors)
-                # save value in csv
-                utils.write_info_to_csv(output_file_path, [kw, epoch, sentiword_set if sentiword_set else "standard", senti], mode="a")
-            except KeyError:
-                print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
+calculate_mean_frequency_over_all_epochs()

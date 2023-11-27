@@ -1,0 +1,15 @@
+pip~=23.3.1
+Pillow~=9.3.0
+setuptools~=69.0.2
+packaging~=21.3
+pyparsing~=3.0.9
+Cython~=0.29.28
+pandas~=1.5.0
+gensim~=4.2.0
+numpy~=1.24.4
+scipy~=1.9.1
+nltk~=3.8.1
+HanTa~=1.1.1
+matplotlib~=3.6.2
+seaborn~=0.12.2
+scikit-learn~=1.3.2

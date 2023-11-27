@@ -1,6 +1,7 @@
 .idea
 __pycache__
 archiv
+venv
 data/*
 !data/epochs.csv
 !data/session_markers.csv
