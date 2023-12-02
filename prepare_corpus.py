@@ -29,7 +29,7 @@ def extract_debate_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, 
     :return: text of the specified session
     """
     # find xml file for specific session in election period
-    file_path = f'{ROOT_DIR}/data/wp{ep}/{ep:02d}{session:003d}.xml'
+    file_path = f'{ROOT_DIR}/data/corpus/wp{ep}/{ep:02d}{session:003d}.xml'
     if os.path.exists(file_path):
         # read xml
         data = ET.parse(file_path)
@@ -71,7 +71,7 @@ def extract_debate_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, 
 
 
 def extract_text_from_ep_20_xml(session):
-    file_path = f'{ROOT_DIR}/data/wp20/20{session:003d}-data.xml'
+    file_path = f'{ROOT_DIR}/data/corpus/wp20/20{session:003d}-data.xml'
     if os.path.exists(file_path):
         # read xml and find sitzungsverlauf tag, containing the stenographical protocol
         data = ET.parse(file_path)
@@ -99,21 +99,21 @@ def pure_text_to_epoch_txt(epoch_id):
     epoch_ending_date = datetime.datetime.strptime(epoch_df.epoch_ending_date.iloc[0], '%d.%m.%Y')
     if epoch_id != 8:
         for ep in range(ep_start, ep_end + 1):
-            for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/wp{ep}'))+1):
+            for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp{ep}'))+1):
                 session_text = extract_debate_for_corpus_before_20th_ep(ep, i, epoch_beginning_date, epoch_ending_date)
                 if session_text:
                     text_to_add = " ".join([text_to_add, session_text])
                 else:
                     break
     else:
-        for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/wp19')) + 1):
+        for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp19')) + 1):
             # check for dates
             session_text = extract_debate_for_corpus_before_20th_ep(19, i, epoch_beginning_date, epoch_ending_date)
             if session_text:
                 text_to_add = " ".join([text_to_add, session_text])
             else:
                 break
-        for a in range(1, len(os.listdir(f'{ROOT_DIR}/data/wp20')) + 1):
+        for a in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp20')) + 1):
             session_text = extract_text_from_ep_20_xml(a)
             text_to_add = " ".join([text_to_add, session_text])
     with open(txt_file_path, 'w', encoding="utf-8") as text_file:
@@ -140,10 +140,10 @@ def prepare_text_for_embedding_training(filename, lemmatize=False):
                 hannover.analyze(token)[0] if lemmatize else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
                 if 1 <= len(token) <= 40 and not token.startswith('_')
             ]
-            tokenized.append(tokens)
+            tokenized.append(" ".join(tokens))
             i = i + 1
             print(f'\rPrepared sent No. {i}', end="")
-        return tokenized
+        return "\n".join(tokenized)
 
 
 def print_contexts_for_word_from_lemmatized_corpus(word, epoch):

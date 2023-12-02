@@ -12,7 +12,6 @@ import math
 from scipy.spatial.distance import cosine
 
 
-# TODO: compare two methods for time efficiency!
 def prepared_corpus_to_wordlist(corpus_name):
     corpus_unflattened = utils.unpickle(corpus_name)
     # flatten corpus to one layered list
@@ -155,8 +154,15 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
     # load keywords
     keywords = utils.load_keywords()
     # load sentiwords according to choice
-    senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords.csv"
-    df = pd.read_csv(senti_file_path)
+    if sentiword_set == 'combination':
+        senti_file_path1 = f"data/sentiwords.csv"
+        senti_file_path2 = f"data/political_sentiwords.csv"
+        df1 = pd.read_csv(senti_file_path1)
+        df2 = pd.read_csv(senti_file_path2)
+        df = pd.concat([df1, df2], ignore_index=True)
+    else:
+        senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords.csv"
+        df = pd.read_csv(senti_file_path)
     # group sentiwords by value (A: +1/B: -1)
     df_pos = df[df["value"] == 1]
     df_neg = df[df["value"] == -1]
@@ -201,7 +207,6 @@ def normalize_with_axis_senti_and_save_to_csv():
         normalized.append(senti/freq)
     senti_df['normalized_by_freq'] = normalized
     senti_df.to_csv('data/results/senti_with_axis.csv')
-
 
 
 # TODO: maybe ignore words in epoch that appear seldom, e.g. less than 1e-06
@@ -311,6 +316,3 @@ def calculate_cosine_development_for_each_keyword():
                 next_epoch_row = epochs_df[epochs_df['epoch_id'] == next_epoch].iloc[0]
                 epoch_range_str = f'{epoch_row.written_form_short} bis {next_epoch_row.written_form_short}'
                 utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
-
-
-calculate_mean_frequency_over_all_epochs()
