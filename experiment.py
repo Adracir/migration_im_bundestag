@@ -23,11 +23,6 @@ def find_counts_for_keywords(count_dict):
     return {k: count_dict.get(k, 0) for k in keywords}
 
 
-def total_word_frequency_distribution(epoch):
-    wordlist = prepared_corpus_to_wordlist(f"data/corpus/epoch{epoch}_prepared_lemma")
-    return Counter(wordlist)
-
-
 def save_frequency_info_in_csv():
     utils.write_info_to_csv('data/results/freqs.csv', ['epoch', 'keyword', 'count', 'freq', 'pMW'])
     for epoch in range(1, 9):
@@ -45,57 +40,31 @@ def save_frequency_info_in_csv():
             utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq, pMW], 'a')
 
 
-# given list highest_freq_for_epochs contains the count of the most frequent word in the respective epoch corpus, 'der'
-def determine_frequency_classes_for_keywords(highest_freq_for_epochs=[2874025, 1927682, 2229283, 3214476, 3232228, 4930583, 2840717, 987578]):
-    keywords = utils.load_keywords()
-    # iterate freqs csv
-    df = pd.read_csv('data/results/freqs.csv')
-    freq_classes = []
-    # formula for freq class obtained from https://homepage.ruhr-uni-bochum.de/Stephen.Berman/Korpuslinguistik/H%C3%A4ufigkeitsma%C3%9Fe.html
-    for index, row in df.iterrows():
-        epoch = row['epoch']
-        faR = highest_freq_for_epochs[epoch - 1]
-        faW = row['count']
-        if faW == 0:
-            freq_class = 1000
-        else:
-            freq_class = round(math.log2(faR/faW))
-        freq_classes.append(freq_class)
-    df['freq_class'] = freq_classes
-    df.to_csv('data/results/freqs_and_classes.csv')
-
-
 def find_first_occurrences_for_keywords():
     # load keywords
-    keywords = utils.load_keywords()
+    df = pd.read_csv('data/keywords.csv')
+    keywords = df['keyword'].tolist()
     # load freqs
     df = pd.read_csv('data/results/freqs.csv')
     utils.write_info_to_csv("data/results/kw_occurrences.csv", ['keyword', 'first_occ_epoch', 'last_occ_epoch',
-                                                                'loophole', 'low_occ'])
+                                                                'loophole'])
     # for each keyword find first & last non-null freq-epoch
     for kw in keywords:
         kw_freqs_df = df[df['keyword'] == kw]
         # freq infos for kw df
-        non_zero_epochs_df = kw_freqs_df[kw_freqs_df['count'] != 0]
-        # für welche Epochs ist count != 0?
-        non_zero_epochs = non_zero_epochs_df['epoch'].tolist()
-        low_occ_epochs_df = kw_freqs_df[kw_freqs_df['freq'] < 1e-06]
-        low_occ_epochs = low_occ_epochs_df['epoch'].tolist()
-        first_occ_epoch = min(non_zero_epochs) if non_zero_epochs else 0
-        last_occ_epoch = max(non_zero_epochs) if non_zero_epochs else 0
+        enough_occ_epochs_df = kw_freqs_df[kw_freqs_df['count'] > 4]
+        # for which epoch is count > 4? Only these will generate results for the word embedding model
+        enough_occ_epochs = enough_occ_epochs_df['epoch'].tolist()
+        first_occ_epoch = min(enough_occ_epochs) if enough_occ_epochs else 0
+        last_occ_epoch = max(enough_occ_epochs) if enough_occ_epochs else 0
         loopholes = []
-        relevant_low_occ_epochs = []
         for i in range(first_occ_epoch, last_occ_epoch+1):
-            if i not in non_zero_epochs:
+            if i not in enough_occ_epochs:
                 loopholes.append(f'{i}')
                 print(f"WARNING: {kw} has a loophole at {i}")
-            if i in low_occ_epochs:
-                relevant_low_occ_epochs.append(f'{i}')
-        # write into csv: keyword, first_occ_epoch, last_occ_epoch
+        # write into csv: keyword, first_occ_epoch, last_occ_epoch, loopholes
         utils.write_info_to_csv("data/results/kw_occurrences.csv", [kw, first_occ_epoch, last_occ_epoch,
-                                                                    '_'.join(loopholes) if len(loopholes) > 0 else 0,
-                                                                    '_'.join(relevant_low_occ_epochs) if
-                                                                    len(relevant_low_occ_epochs) > 0 else 0], mode='a')
+                                                                    '_'.join(loopholes) if len(loopholes) > 0 else 0], mode='a')
 
 
 def create_kw_occurrences_and_merge_to_keyword_list():
@@ -138,6 +107,8 @@ def weat(w, A, B, word_vectors):
     return np.mean(sim_wa) - np.mean(sim_wb)
 
 
+# TODO: make decision: keep these unused methods for transparency and showing how much I did or throwing it away for
+#  the sake of well-organized code?
 def senti_with_axis(w, A, B, wordvectors):
     # Berechnen Sie den Durchschnittsvektor der positiven und negativen Ausgangswörter
     positive_vector = sum(wordvectors[word] for word in A if word in wordvectors.index_to_key) / len(A)
@@ -152,7 +123,8 @@ def senti_with_axis(w, A, B, wordvectors):
 def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
     print("preparing sentiment analysis")
     # load keywords
-    keywords = utils.load_keywords()
+    keyword_df = pd.read_csv('data/keywords_merged.csv')
+    keywords = keyword_df['keyword'].tolist()
     # load sentiwords according to choice
     if sentiword_set == 'combination':
         senti_file_path1 = f"data/sentiwords.csv"
@@ -174,25 +146,24 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
         utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
     # iterate keywords
     for kw in keywords:
-        print(f"Analysing key word {kw}")
-        # for keyword: iterate epochs
-        # TODO: maybe get epochs programmatically??
-        for epoch in range(1, 9):
-            # get associated wordvectors
-            word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
-            # TODO: maybe ignore keywords that have ignore= 1?
-            try:
-                if with_axis:
-                    senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
-                else:
-                    # calculate bias value of word with WEAT method
-                    senti = weat(kw, pos_words, neg_words, word_vectors)
-                # save value in csv
-                utils.write_info_to_csv(output_file_path,
-                                        [kw, epoch, sentiword_set if sentiword_set else "standard", senti],
-                                        mode="a")
-            except KeyError:
-                print(f"Keyword {kw} not in vocabulary of epoch {epoch}! Omitted from analysis.")
+        kw_keyword_df = keyword_df[keyword_df['keyword'] == kw]
+        if kw_keyword_df['ignore'].iloc[0] == 0:
+            print(f"Analysing key word {kw}")
+            # for keyword: iterate epochs
+            for epoch in range(1, 9):
+                # get associated wordvectors
+                word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
+                # only analyze word if it is supposed to be in the vocab
+                if epoch in range(kw_keyword_df['first_occ_epoch'].iloc[0], kw_keyword_df['last_occ_epoch'].iloc[0] + 1) and str(epoch) not in kw_keyword_df['loophole'].iloc[0]:
+                    if with_axis:
+                        senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
+                    else:
+                        # calculate bias value of word with WEAT method
+                        senti = weat(kw, pos_words, neg_words, word_vectors)
+                    # save value in csv
+                    utils.write_info_to_csv(output_file_path,
+                                            [kw, epoch, sentiword_set if sentiword_set else "standard", senti],
+                                            mode="a")
 
 
 def normalize_with_axis_senti_and_save_to_csv():
@@ -209,7 +180,6 @@ def normalize_with_axis_senti_and_save_to_csv():
     senti_df.to_csv('data/results/senti_with_axis.csv')
 
 
-# TODO: maybe ignore words in epoch that appear seldom, e.g. less than 1e-06
 def save_nearest_neighbors(aligned=False):
     if aligned:
         df = pd.read_csv('data/keywords_merged.csv')

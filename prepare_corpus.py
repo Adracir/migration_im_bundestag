@@ -5,7 +5,7 @@ import re
 import datetime
 import time
 from nltk.tokenize import sent_tokenize
-import gensim.utils as gu
+import gensim.utils as gu # musste erst über pip install gensim installiert werden!
 from HanTa import HanoverTagger as ht  # musste erst über pip install hanta installiert werden!
 import sys
 
@@ -140,10 +140,10 @@ def prepare_text_for_embedding_training(filename, lemmatize=False):
                 hannover.analyze(token)[0] if lemmatize else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
                 if 1 <= len(token) <= 40 and not token.startswith('_')
             ]
-            tokenized.append(" ".join(tokens))
+            tokenized.append(tokens)
             i = i + 1
             print(f'\rPrepared sent No. {i}', end="")
-        return "\n".join(tokenized)
+        return tokenized
 
 
 def print_contexts_for_word_from_lemmatized_corpus(word, epoch):

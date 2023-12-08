@@ -20,7 +20,7 @@ def make_word_emb_model(data, sg=1, vec_dim=100, window=5):
     :param window: defines the window that is used to create the embeddings
     """
     print('Generating Model')
-    return gensim.models.Word2Vec(data, min_count=1, sg=sg, vector_size=vec_dim, window=window)
+    return gensim.models.Word2Vec(data, sg=sg, vector_size=vec_dim, window=window)
 
 
 def evaluate_embeddings(keyed_vectors, evaluation_set='222'):
@@ -180,16 +180,17 @@ def evaluate_aligned_models(epoch1, epoch2, start_epoch, loophole='0'):
     print(f'sim {start_epoch} & {epoch2}_aligned: {utils.similarity(start_model.wv["der"], model2_aligned.wv["der"])}')
 
 
+# manually checking if everything that is needed is there is required!
 def align_according_to_occurrences():
     # iterate rows in keywords_merged.csv
     df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
-        # if word never occurs, ignore
-        if row.first_occ_epoch != 0:
+        # if word never or only once occurs, ignore
+        if row.first_occ_epoch != 0 and row.last_occ_epoch - (len(row.loophole.split('_')) if int(row.loophole) != 0 else 0) - row.first_occ_epoch > 0:
             # check if resp. start_epoch-folder exists
             aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
             if os.path.isdir(aligned_base_folder):
-                # check if it contains all necessary models (iterate)
+                # check if it contains all (and only the) necessary models (iterate)
                 for epoch in range(row.first_occ_epoch, row.last_occ_epoch + 1):
                     epoch_aligned_model_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.model'
                     if str(epoch) not in row.loophole:
@@ -208,7 +209,7 @@ def align_according_to_occurrences():
                     if epoch1 != necessary_epochs[-1]:
                         epoch2 = necessary_epochs[necessary_epochs.index(epoch1) + 1]
                         align_two_models(epoch1, epoch2, row.first_occ_epoch, row.loophole)
-                        evaluate_aligned_models(epoch1, epoch2, row.first_occ_epoch)
+                        evaluate_aligned_models(epoch1, epoch2, row.first_occ_epoch, row.loophole)
 
 
 # prepare and save epoch corpus from txt

@@ -34,17 +34,10 @@ def skip_some_vals(x, y, val_to_skip=1000):
     return [x_segments, y_segments]
 
 
-def transform_expected_freqs_values(all_freqs, relevant_expected_values, exponential):
+def transform_expected_freqs_values(all_freqs, relevant_expected_values):
     transformed_values = []
     max_freqs = max(all_freqs)
-    if not exponential:
-        step_size = max_freqs/8
-    else:
-        relevant_expected_values = np.array(relevant_expected_values)
-        relevant_expected_values = np.where(relevant_expected_values == 0, 0,
-                                            np.where(relevant_expected_values >= 1000, 1000,
-                                                     np.exp(relevant_expected_values)))
-        step_size = max_freqs/np.exp(8)
+    step_size = max_freqs/8
     for val in relevant_expected_values:
         transformed_values.append(val if val == 1000 else step_size * val)
     return transformed_values
@@ -63,10 +56,10 @@ def transform_expected_senti_values(all_senti, expected_values):
 
 # Frequency methods
 # TODO: eliminate warning(s) from exp. Or remove the exponential aspect.
-def plot_frequencies(include_expected=True, absolute=False, exponential=False):
+def plot_frequencies(include_expected=True, absolute=False):
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
-    keywords_df = pd.read_csv('data/keywords2.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
     if include_expected:
         expected_df = pd.read_csv('data/expected_values.csv')
     # keywords = utils.load_keywords()
@@ -94,9 +87,9 @@ def plot_frequencies(include_expected=True, absolute=False, exponential=False):
                 expected_values = expected_kw_df['expected_freq'].tolist()
                 written_expected = expected_kw_df['written_freq'].tolist()
                 # transform values using all existing freqs values
-                transformed_exp_values = transform_expected_freqs_values(reference_values, expected_values, exponential)
+                transformed_exp_values = transform_expected_freqs_values(reference_values, expected_values)
             title = f'Häufigkeiten des Schlagwortes {kw}'
-            path = f'data/results/plots/frequencies/freq_{kw}{"_with_expected" if include_expected else ""}{"_abs_ref" if absolute else ("_rel_ref" if include_expected else "")}{"_exp" if exponential else ""}_plot.png'
+            path = f'data/results/plots/frequencies/freq_{kw}{"_with_expected" if include_expected else ""}{"_abs_ref" if absolute else ("_rel_ref" if include_expected else "")}_plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -118,11 +111,11 @@ def plot_frequencies(include_expected=True, absolute=False, exponential=False):
                 expected_values = expected_kw_df['expected_freq'].tolist()
                 written_expected = expected_kw_df['written_freq'].tolist()
                 # transform values using all existing freqs values
-                transformed_exp_values = transform_expected_freqs_values(reference_values, expected_values, exponential)
+                transformed_exp_values = transform_expected_freqs_values(reference_values, expected_values)
             indices_done.extend(combine_group_indices)
             title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
             path = f"data/results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}{'_with_expected' if include_expected else ''}" \
-                   f"{'_abs_ref' if absolute else ('_rel_ref' if include_expected else '')}{'_exp' if exponential else ''}_plot.png"
+                   f"{'_abs_ref' if absolute else ('_rel_ref' if include_expected else '')}_plot.png"
         written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
         plt.title(title)
@@ -130,8 +123,6 @@ def plot_frequencies(include_expected=True, absolute=False, exponential=False):
         x = np.arange(len(epochs))
         ax = plt.gca()
         ax.set_xlim(0, len(epochs))
-        # TODO: sieht z.B. bei Integration exp doof aus
-        ax.set_ylim(0, max(freqs)+(max(freqs)*0.5))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
         plt.ylabel('relative Häufigkeiten im Korpus in pMW')
@@ -174,7 +165,7 @@ def plot_comparing_frequencies():
         # get all keywords in the row
         keywords = [item for item in row.tolist() if str(item) != 'nan']
         # limit senti_df to only these keywords and the wanted sentiword_model
-        freqs_df_filtered = freqs_df[freqs_df['word'].isin(keywords)]
+        freqs_df_filtered = freqs_df[freqs_df['keyword'].isin(keywords)]
         # get the needed epochs
         epochs = sorted(set(freqs_df_filtered['epoch'].tolist()))
         # save values in a nested array
@@ -182,7 +173,7 @@ def plot_comparing_frequencies():
         for w in keywords:
             freqs.append([])
             for epoch in epochs:
-                val = freqs_df_filtered[(freqs_df_filtered['epoch'] == epoch) & (freqs_df_filtered['word'] == w)]['pMW'].iloc[0]
+                val = freqs_df_filtered[(freqs_df_filtered['epoch'] == epoch) & (freqs_df_filtered['keyword'] == w)]['pMW'].iloc[0]
                 freqs[keywords.index(w)].append(val)
         title = f"Häufigkeiten der Schlagwörter {', '.join(keywords)}"
         path = f"data/results/plots/frequencies/freq_compared_{'_'.join(keywords)}_plot.png"
@@ -262,7 +253,7 @@ def plot_frequency_distribution_for_corpora_keywords():
 
 # TODO: in- or exclude normalization by freq in a meaningful way
 # Sentiments/Valuation
-def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, absolute=False):
+def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, absolute=True):
     senti_df = pd.read_csv(f'data/results/senti{"_with_axis" if with_axis else ""}.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
@@ -290,14 +281,11 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, a
                 kw_senti_model_df = kw_senti_df[kw_senti_df['sentiword_set'] == sentiword_set]
                 senti_values_for_model = []
                 for epoch in epochs:
-                    # value = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]['value'].iloc[0]
-                    value = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]['normalized_by_freq'].iloc[0]
+                    value = kw_senti_model_df[kw_senti_model_df['epoch'] == epoch]['value'].iloc[0]
                     senti_values_for_model.append(value)
                 senti_values.append(senti_values_for_model)
             if include_expected:
-                # reference_values = senti_df_filtered['value'].tolist() if absolute else [item for sublist in senti_values for
-                #                                                                 item in sublist]
-                reference_values = senti_df_filtered['normalized_by_freq'].tolist() if absolute else [item for sublist in senti_values for
+                reference_values = senti_df_filtered['value'].tolist() if absolute else [item for sublist in senti_values for
                                                                                 item in sublist]
                 # get relevant info from expected_values for epochs and kw
                 expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw) & expected_df['epoch'].isin(epochs)]
@@ -307,7 +295,7 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, a
                     reference_values, expected_values)
             indices_done.append(i)
             title = f'Wertungen des Schlagwortes {kw} anhand {"einer Polaritätsachse" if with_axis else "WEAT"}'
-            path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_{"with_axis_" if with_axis else "weat_"}{"abs_ref_" if absolute else ("rel_ref_" if include_expected else "")}normalized_plot.png'
+            path = f'data/results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_{"with_axis_" if with_axis else "weat_"}{"abs_ref_" if absolute else ("rel_ref_" if include_expected else "")}plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -324,15 +312,12 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, a
                 for epoch in epochs:
                     combined_kw_senti_model_epoch_df = combined_kw_senti_model_df[combined_kw_senti_model_df['epoch'] == epoch]
                     # get value as mean between all given values
-                    # senti_value = np.mean(combined_kw_senti_model_epoch_df['value'].tolist())
-                    senti_value = np.mean(combined_kw_senti_model_epoch_df['normalized_by_freq'].tolist())
+                    senti_value = np.mean(combined_kw_senti_model_epoch_df['value'].tolist())
                     senti_values_for_model.append(senti_value)
                 senti_values.append(senti_values_for_model)
             if include_expected:
-                # reference_values = senti_df_filtered['value'].tolist() if absolute else [item for sublist in senti_values for
-                #                                                                 item in sublist]
-                reference_values = senti_df_filtered['normalized_by_freq'].tolist() if absolute else [item for sublist in senti_values for
-                                                                                item in sublist]
+                reference_values = senti_df_filtered['value'].tolist() if absolute else [item for sublist in senti_values for
+                                                                                 item in sublist]
                 # get relevant info from expected_values for epochs and kw
                 # it is assumed that combined kws are in the same expectation group!
                 expected_kw_df = expected_df[expected_df['keyword'].str.contains(combined_kws[0]) & expected_df['epoch'].isin(epochs)]
@@ -342,7 +327,7 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, a
                     reference_values, expected_values)
             indices_done.extend(combine_group_indices)
             title = f'Wertungen der Schlagwörter {", ".join(combined_kws)} anhand {"einer Polaritätsachse" if with_axis else "WEAT"}'
-            path = f"data/results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_{'_'.join(sentiword_set_arr)}_{'with_axis_' if with_axis else 'weat_'}{'abs_ref_' if absolute else ('rel_ref_' if include_expected else '')}normalized_plot.png"
+            path = f"data/results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_{'_'.join(sentiword_set_arr)}_{'with_axis_' if with_axis else 'weat_'}{'abs_ref_' if absolute else ('rel_ref_' if include_expected else '')}plot.png"
         epochs_df = pd.read_csv('data/epochs.csv')
         written_forms = epochs_df.loc[epochs_df['epoch_id'].isin(epochs), 'written_form'].tolist()  # TODO: retrieve written forms only for relevant epochs
         # title
@@ -389,7 +374,7 @@ def plot_sentiments(sentiword_set_arr, with_axis=False, include_expected=True, a
         print(f"plot {i} saved")
 
 
-def plot_comparing_sentiments(sentiword_set="standard", with_axis=True):
+def plot_comparing_sentiments(sentiword_set="combination", with_axis=False):
     filename = f'data/results/{"senti.csv" if not with_axis else "senti_with_axis.csv"}'
     senti_df = pd.read_csv(filename)
     senti_model_df = senti_df[senti_df['sentiword_set'] == sentiword_set]
@@ -410,15 +395,14 @@ def plot_comparing_sentiments(sentiword_set="standard", with_axis=True):
             senti.append([])
             for epoch in epochs:
                 try:
-                    # val = senti_df_filtered[(senti_df_filtered['epoch'] == epoch) & (senti_df_filtered['word'] == w)]['value'].iloc[0]
-                    val = senti_df_filtered[(senti_df_filtered['epoch'] == epoch) & (senti_df_filtered['word'] == w)]['normalized_by_freq'].iloc[0]
+                    val = senti_df_filtered[(senti_df_filtered['epoch'] == epoch) & (senti_df_filtered['word'] == w)]['value'].iloc[0]
                 except IndexError:
                     val = None
                 senti[keywords.index(w)].append(val)
         # TODO: suptitle too long! Also, fix space to title
         suptitle = f'Wertungen der Schlagwörter {", ".join(keywords)}'
         title = f'anhand {"einer Polaritätsachse" if with_axis else "WEAT"} & {sentiword_set} Wort Set'
-        path = f"data/results/plots/senti/senti_compared_{'_'.join(keywords)}_{sentiword_set}{'_with_axis' if with_axis else '_weat'}_normalized_plot.png"
+        path = f"data/results/plots/senti/senti_compared_{'_'.join(keywords)}_{sentiword_set}{'_with_axis' if with_axis else '_weat'}_plot.png"
         written_forms = epochs_df[epochs_df['epoch_id'].isin(epochs)]['written_form'].tolist()
         # titles
         plt.suptitle(suptitle, fontsize=16, fontweight="bold")
@@ -466,6 +450,7 @@ def label_point(x, y, val, type, sim, ax):
                     weight=weight)
 
 
+# TODO: maybe unite Asylmißbrauch and Asylmissbrauch
 # TODO: maybe remove sklearn.cosine_similarity! Then scikit-learn can be left out
 # TODO: improve representation so that it becomes more meaningful
 # Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
@@ -478,7 +463,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
     target_vectors = {}
     for epoch in epochs:
         epoch_written = utils.get_epoch_written_form_short(epoch)
-        model_wv_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.wordvectors'
+        model_wv_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow{"_aligned" if len(epochs) > 1 else ""}.wordvectors'
         # print("Year: ", model_years[year_index])
         word_vectors = KeyedVectors.load(model_wv_path)
         vocab = list(word_vectors.index_to_key)
@@ -552,17 +537,31 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         plt.close()
 
 
-def plot_tsne_according_to_occurrences(k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
+def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
     # iterate rows in keywords_merged.csv
     df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
         # if word never occurs, ignore
-        if row.first_occ_epoch != 0:
+        if row.first_occ_epoch != 0 and (words == 'all' or row.keyword in words):
             # check if resp. start_epoch-folder exists
             aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
             if os.path.isdir(aligned_base_folder):
                 necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
-                plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, k, perplexity, mode_gensim, keep_doubles, iter)
+                # plot words with more than one epoch only
+                if len(necessary_epochs) > 1:
+                    if k == 'flex':
+                        if len(necessary_epochs) <= 3:
+                            final_k = 18
+                        elif len(necessary_epochs) < 6 and len(necessary_epochs) > 3:
+                            final_k = 12
+                        else:
+                            final_k = 8
+                    else:
+                        final_k = k
+                    plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, final_k, perplexity, mode_gensim, keep_doubles, iter)
+            else:
+                print(f"ERROR! Folder {aligned_base_folder} does not exist. "
+                      f"Please re-do alignment and/or check your folder structure!")
 
 
 def plot_cosine_development_each_word():
