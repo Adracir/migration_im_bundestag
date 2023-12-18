@@ -40,6 +40,36 @@ def save_frequency_info_in_csv():
             utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq, pMW], 'a')
 
 
+def include_written_form_in_expected_csv(method):
+    df = pd.read_csv('data/expected_values.csv')
+    translation_df = pd.read_csv(f'data/expected_{method}_translation.csv')
+    expected_values = df[f'expected_{method}'].tolist()
+    expected_written = []
+    for val in expected_values:
+        written = translation_df[translation_df[f'{method}_value'] == val]['written'].iloc[0]
+        expected_written.append(written)
+    df[f'written_{method}'] = expected_written
+    df.to_csv('data/expected_values.csv', index=False)
+
+
+def make_freq_slices():
+    freqs_df = pd.read_csv('data/results/freqs.csv')
+    all_freqs = freqs_df['pMW'].tolist()
+    all_freqs_arr = np.array(all_freqs)
+    sorted_freqs = sorted(all_freqs_arr[all_freqs_arr != 0.0])
+    # create 8 slices
+    slices = np.array_split(sorted_freqs, 8)
+    # guarantee smooth transitions without noticeable gaps
+    for i in range(len(slices) - 1):
+        slices[i][-1] = slices[i + 1][0] - 0.0001
+    data = {'expected_freq_key': range(1, 9),
+            'pMW_mean': [np.mean(s) for s in slices],
+            'pMW_max': [max(s) for s in slices],
+            'pMW_min': [min(s) for s in slices]}
+    df = pd.DataFrame(data)
+    df.to_csv('data/results/expected_freq_results_slices.csv', index=False)
+
+
 def find_first_occurrences_for_keywords():
     # load keywords
     df = pd.read_csv('data/keywords.csv')
@@ -75,7 +105,6 @@ def create_kw_occurrences_and_merge_to_keyword_list():
     merged_df.to_csv('data/keywords_merged.csv', index=False)
 
 
-# TODO: maybe visualize!
 def calculate_mean_frequency_over_all_epochs():
     # prepare output
     output_file_path = 'data/results/mean_freqs.csv'
@@ -180,6 +209,64 @@ def normalize_with_axis_senti_and_save_to_csv():
     senti_df.to_csv('data/results/senti_with_axis.csv')
 
 
+def make_senti_slices(sentiword_set='combination'):
+    senti_df = pd.read_csv('data/results/senti.csv')
+    all_senti = senti_df[senti_df['sentiword_set'] == sentiword_set]['value'].tolist()
+    # split at 0
+    negative_values = sorted([val for val in all_senti if val < 0])
+    positive_values = sorted([val for val in all_senti if val > 0])
+    # take set with the higher range
+    if max([abs(val) for val in negative_values]) > abs(max(positive_values)):
+        first_list = negative_values
+    else:
+        first_list = positive_values
+    # create 4 equally big slices for the first list
+    first_slices = np.array_split(first_list, 4)
+    # guarantee smooth transitions without noticeable gaps
+    for i in range(len(first_slices) - 1):
+        first_slices[i][-1] = first_slices[i + 1][0] - 0.0001
+    # create 4 slices for the second set, but according to the ranges of the first set to obtain symmetry
+    second_slices = [[0 - val for val in nested_list[::-1]] for nested_list in first_slices]
+    second_slices.reverse()
+    slices = []
+    # create slice for neutral values, ensuring no gaps
+    # and unite all slices to one nested list in ascending order
+    if first_slices[0][0] < 0:
+        neutral_slice = [[first_slices[-1][-1] + 0.0001, 0.0, second_slices[0][0] - 0.0001]]
+        slices = first_slices + neutral_slice + second_slices
+    elif second_slices[0][0] < 0:
+        neutral_slice = [[second_slices[-1][-1] + 0.0001, 0.0, first_slices[0][0] - 0.0001]]
+        slices = second_slices + neutral_slice + first_slices
+    expected_translation_df = pd.read_csv('data/expected_senti_translation.csv')
+    data = {'expected_senti_key': sorted(expected_translation_df['senti_value'].tolist()[:9]),
+            'senti_mean': [np.mean(s) for s in slices],
+            'senti_max': [max(s) for s in slices],
+            'senti_min': [min(s) for s in slices],
+            'sentiword_set': [sentiword_set]*9}
+    df = pd.DataFrame(data)
+    df.to_csv('data/results/expected_senti_results_slices.csv', index=False)
+
+
+def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
+    # prepare output
+    output_file_path = 'data/results/mean_senti.csv'
+    utils.write_info_to_csv(output_file_path, ['word', 'mean_senti', 'rank'])
+    # iterate senti.csv
+    df = pd.read_csv('data/results/senti.csv')
+    keywords = list(set(df['word'].tolist()))
+    # for each kw, get senti and mean
+    results = [{'word': kw, 'mean_senti': np.mean(np.array(df[(df['word'] == kw) & (df['sentiword_set'] == sentiword_set)]
+                                                           ['value'].tolist()))} for kw in keywords]
+    # Get indices that would sort mean_senti
+    sorted_indices = np.argsort([results[i]['mean_senti'] for i in range(len(results))])[::-1]
+    # Create a new array with ranks
+    for i, idx in enumerate(sorted_indices):
+        results[idx]['rank'] = i + 1
+    # save in new df/csv
+    for elem in results:
+        utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_senti'], elem['rank']], mode='a')
+
+
 def save_nearest_neighbors(aligned=False):
     if aligned:
         df = pd.read_csv('data/keywords_merged.csv')
@@ -219,6 +306,40 @@ def save_nearest_neighbors(aligned=False):
                 print(f"Keyerror: Key '{kw}' not present in vocabulary for epoch {epoch}")
 
 
+def calculate_sum_nearest_neighbors(aligned=False):
+    # prepare output
+    out_path = 'data/results/aggregated_nearest_neighbors.csv'
+    words_similarities_headings = []
+    for no in range(1, 21):
+        words_similarities_headings.append(f'Word_{no}')
+        words_similarities_headings.append(f'Similarity_{no}')
+    utils.write_info_to_csv(out_path, ['Keyword'] + words_similarities_headings)
+    # read data
+    df = pd.read_csv(f'data/results/nearest_neighbors{"_aligned" if aligned else ""}.csv')
+    # for each keyword:
+    keywords = set(df['Keyword'].tolist())
+    for kw in keywords:
+        # get all words word_1 to word_10 with their resp. similarities
+        neighbors = []
+        kw_df = df[df['Keyword'] == kw]
+        for index, row in kw_df.iterrows():
+            for i in range(1, 11):
+                word = row[f'Word_{i}']
+                sim = row[f'Similarity_{i}']
+                existing_object = next((obj for obj in neighbors if obj['word'] == word), None)
+                # if they appear more than once, sum similarity
+                if existing_object:
+                    existing_object['similarity'] = sum([existing_object['similarity'], sim])
+                else:
+                    new_word_object = {'word': word, 'similarity': sim}
+                    neighbors.append(new_word_object)
+        # sort the aggregated neighbors by similarity
+        sorted_neighbors = sorted(neighbors, key=lambda d: d['similarity'], reverse=True)
+        output_list = [item for sublist in ([word['word'], word['similarity']] for word in sorted_neighbors[:20]) for item in sublist]
+        # for each key word save the 20 nearest neighbors of all epochs with resp. similarities
+        utils.write_info_to_csv(out_path, [kw] + output_list, 'a')
+
+
 # TODO: maybe delete, I think it's never used
 def comparing_connotations(model1, model2, word, k=10, verbose=True):
     """ copied from https://gensim.narkive.com/ZsBAPGm4/11863-word2vec-alignment
@@ -238,9 +359,9 @@ def comparing_connotations(model1, model2, word, k=10, verbose=True):
     neighborhood2 = [w for w, c in model2.most_similar(word, topn=k)]
     # Print?
     if verbose:
-        print('>> Neighborhood of associations of the word "%s" in model1:' % word)
+        print('>> Neighborhood of connotations of the word "%s" in model1:' % word)
         print(', '.join(neighborhood1))
-        print('>> Neighborhood of associations of the word "%s" in model2:' % word)
+        print('>> Neighborhood of connotations of the word "%s" in model2:' % word)
         print(', '.join(neighborhood2))
     # Get the 'meta' neighborhood (both combined)
     meta_neighborhood = list(set(neighborhood1) | set(neighborhood2))

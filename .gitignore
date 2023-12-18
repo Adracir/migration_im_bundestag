@@ -4,6 +4,8 @@ archiv
 venv
 data/*
 !data/epochs.csv
+!data/expected_senti_translation.csv
+!data/expected_freq_translation.csv
 !data/session_markers.csv
 !data/keywords_merged.csv
 !data/sentiwords.csv

@@ -1,0 +1,11 @@
+senti_value,written,symbol
+1,sehr positiv,+
+0.75,positiv,+/o+
+0.5,eher positiv,o+
+0.25,eher positiv/neutral,o+/o
+0,neutral,o/+-
+-0.25,neutral/eher negativ,o/o-
+-0.5,eher negativ,o-
+-0.75,negativ,o-/-
+-1,sehr negativ,-
+1000,,
