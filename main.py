@@ -13,7 +13,7 @@ import numpy as np
 
 
 if __name__ == '__main__':
-    epoch_id = 8
+    '''epoch_id = 8'''
     # unite text for epochs
     '''prepare_corpus.pure_text_to_epoch_txt(epoch_id)'''
     # preprocess text and save this step
@@ -28,9 +28,8 @@ if __name__ == '__main__':
     # save pMW slices of freqs results to enable comparing with "freq classes"
     '''experiment.make_freq_slices()'''
     # plot frequencies
-    '''for absolute in [True, False]:
-        visualizations.plot_frequencies(absolute=absolute, adapted_to_results=True)'''
-    '''visualizations.plot_frequencies()'''
+    '''for relative in [True, False]:
+        visualizations.plot_frequencies(relative=relative)'''
     '''visualizations.plot_comparing_frequencies()'''
     # calculate and plot mean frequencies
     '''experiment.calculate_mean_frequency_over_all_epochs()'''
@@ -57,7 +56,7 @@ if __name__ == '__main__':
     # save senti slices of senti results for plots
     '''experiment.make_senti_slices()'''
     # plot senti
-    '''visualizations.plot_sentiments(['combination'], absolute=False, adapted_to_results=True)'''
+    '''visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)'''
     '''visualizations.plot_comparing_sentiments()'''
     # calculate and plot mean sentiment over all time
     '''experiment.calculate_mean_sentiment_over_all_epochs()'''
@@ -77,8 +76,7 @@ if __name__ == '__main__':
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: compare nearest neighbors from plot with those from csvs
-    # TODO: try with different parameters till it looks good. also with doubles!
-    '''visualizations.plot_tsne_according_to_occurrences(words=['Asylbewerber'], k=10, perplexity=5, keep_doubles=False, iter=5000)'''
+    '''visualizations.plot_tsne_according_to_occurrences(words=['Wirtschaftsflüchtling'], k=10, perplexity=5, keep_doubles=False, iter=3000)'''
     # aggregate nearest neighbors of all time in word cloud
     '''experiment.calculate_sum_nearest_neighbors()'''
     '''visualizations.plot_nearest_neighbors_as_word_clouds()'''

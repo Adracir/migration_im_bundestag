@@ -11,6 +11,8 @@ import math
 
 from scipy.spatial.distance import cosine
 
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 def prepared_corpus_to_wordlist(corpus_name):
     corpus_unflattened = utils.unpickle(corpus_name)
@@ -209,40 +211,51 @@ def normalize_with_axis_senti_and_save_to_csv():
     senti_df.to_csv('data/results/senti_with_axis.csv')
 
 
-def make_senti_slices(sentiword_set='combination'):
+def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
     senti_df = pd.read_csv('data/results/senti.csv')
-    all_senti = senti_df[senti_df['sentiword_set'] == sentiword_set]['value'].tolist()
-    # split at 0
-    negative_values = sorted([val for val in all_senti if val < 0])
-    positive_values = sorted([val for val in all_senti if val > 0])
-    # take set with the higher range
-    if max([abs(val) for val in negative_values]) > abs(max(positive_values)):
-        first_list = negative_values
-    else:
-        first_list = positive_values
-    # create 4 equally big slices for the first list
-    first_slices = np.array_split(first_list, 4)
-    # guarantee smooth transitions without noticeable gaps
-    for i in range(len(first_slices) - 1):
-        first_slices[i][-1] = first_slices[i + 1][0] - 0.0001
-    # create 4 slices for the second set, but according to the ranges of the first set to obtain symmetry
-    second_slices = [[0 - val for val in nested_list[::-1]] for nested_list in first_slices]
-    second_slices.reverse()
-    slices = []
-    # create slice for neutral values, ensuring no gaps
-    # and unite all slices to one nested list in ascending order
-    if first_slices[0][0] < 0:
-        neutral_slice = [[first_slices[-1][-1] + 0.0001, 0.0, second_slices[0][0] - 0.0001]]
-        slices = first_slices + neutral_slice + second_slices
-    elif second_slices[0][0] < 0:
-        neutral_slice = [[second_slices[-1][-1] + 0.0001, 0.0, first_slices[0][0] - 0.0001]]
-        slices = second_slices + neutral_slice + first_slices
-    expected_translation_df = pd.read_csv('data/expected_senti_translation.csv')
-    data = {'expected_senti_key': sorted(expected_translation_df['senti_value'].tolist()[:9]),
-            'senti_mean': [np.mean(s) for s in slices],
-            'senti_max': [max(s) for s in slices],
-            'senti_min': [min(s) for s in slices],
-            'sentiword_set': [sentiword_set]*9}
+    expected_senti_keys = []
+    senti_mean = []
+    senti_max = []
+    senti_min = []
+    sentiword_set_list = []
+    for sentiword_set in sentiword_sets:
+        all_senti = senti_df[senti_df['sentiword_set'] == sentiword_set]['value'].tolist()
+        # split at 0
+        negative_values = sorted([val for val in all_senti if val < 0])
+        positive_values = sorted([val for val in all_senti if val > 0])
+        # take set with the higher range
+        if max([abs(val) for val in negative_values]) > abs(max(positive_values)):
+            first_list = negative_values
+        else:
+            first_list = positive_values
+        # create 4 equally big slices for the first list
+        first_slices = np.array_split(first_list, 4)
+        # guarantee smooth transitions without noticeable gaps
+        for i in range(len(first_slices) - 1):
+            first_slices[i][-1] = first_slices[i + 1][0] - 0.0001
+        # create 4 slices for the second set, but according to the ranges of the first set to obtain symmetry
+        second_slices = [[0 - val for val in nested_list[::-1]] for nested_list in first_slices]
+        second_slices.reverse()
+        slices = []
+        # create slice for neutral values, ensuring no gaps
+        # and unite all slices to one nested list in ascending order
+        if first_slices[0][0] < 0:
+            neutral_slice = [[first_slices[-1][-1] + 0.0001, 0.0, second_slices[0][0] - 0.0001]]
+            slices = first_slices + neutral_slice + second_slices
+        elif second_slices[0][0] < 0:
+            neutral_slice = [[second_slices[-1][-1] + 0.0001, 0.0, first_slices[0][0] - 0.0001]]
+            slices = second_slices + neutral_slice + first_slices
+        expected_translation_df = pd.read_csv('data/expected_senti_translation.csv')
+        expected_senti_keys.extend(sorted(expected_translation_df['senti_value'].tolist()[:9]))
+        senti_mean.extend([np.mean(s) for s in slices])
+        senti_max.extend([max(s) for s in slices])
+        senti_min.extend([min(s) for s in slices])
+        sentiword_set_list.extend([sentiword_set]*9)
+    data = {'expected_senti_key': expected_senti_keys,
+                'senti_mean': senti_mean,
+                'senti_max': senti_max,
+                'senti_min': senti_min,
+                'sentiword_set': sentiword_set_list}
     df = pd.DataFrame(data)
     df.to_csv('data/results/expected_senti_results_slices.csv', index=False)
 
@@ -304,6 +317,43 @@ def save_nearest_neighbors(aligned=False):
                 utils.write_info_to_csv(save_file_path, [kw, epoch] + words_similarities, mode='a')
             except KeyError:
                 print(f"Keyerror: Key '{kw}' not present in vocabulary for epoch {epoch}")
+
+
+# TODO: maybe remove sklearn.cosine_similarity! Then scikit-learn can be left out
+def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim=True, keep_doubles=False):
+    target_vectors = {}
+    for epoch in epochs:
+        epoch_written = utils.get_epoch_written_form_short(epoch)
+        model_wv_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow{"_aligned" if len(epochs) > 1 else ""}.wordvectors'
+        # print("Year: ", model_years[year_index])
+        word_vectors = KeyedVectors.load(model_wv_path)
+        vocab = list(word_vectors.index_to_key)
+        target_word_year = f'{target_word}_{epoch_written}'
+        target_vectors[target_word_year] = {}
+        target_vectors[target_word_year]['vector'] = word_vectors[target_word]
+        target_vectors[target_word_year]['type'] = 'target_word'
+        if mode_gensim:
+            word_sim = word_vectors.most_similar(positive=target_word, topn=k)
+        else:
+            target_word_vec = [word_vectors[target_word]]
+            vocab_sim = [cosine_similarity(target_word_vec, [word_vectors[vocab_word]]) for vocab_word in vocab if
+                         vocab_word != target_word]
+            word_sim = [(w, s) for s, w in sorted(zip(vocab_sim, vocab), reverse=True)][:k]
+        for ws in word_sim:
+            if keep_doubles:
+                ws_key = f'{ws[0]}_{epoch_written}'
+                target_vectors[ws_key] = {}
+                target_vectors[ws_key]['vector'] = word_vectors[ws[0]]
+                target_vectors[ws_key]['type'] = epoch_written
+                target_vectors[ws_key]['sim'] = ws[1]
+            elif (ws[0] not in target_vectors.keys()) or (ws[0] in target_vectors.keys()
+                                                          and ws[1] > target_vectors[ws[0]]['sim']):
+                # throwing away double existing words makes them invisible in future epochs
+                target_vectors[ws[0]] = {}
+                target_vectors[ws[0]]['vector'] = word_vectors[ws[0]]
+                target_vectors[ws[0]]['type'] = epoch_written
+                target_vectors[ws[0]]['sim'] = ws[1]
+    return target_vectors
 
 
 def calculate_sum_nearest_neighbors(aligned=False):

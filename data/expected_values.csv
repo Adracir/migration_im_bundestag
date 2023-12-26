@@ -4,18 +4,18 @@ epoch,keyword,expected_freq,expected_senti,written_freq,written_senti
 3,Flüchtling,6,1.0,häufig,sehr positiv
 4,Flüchtling,6,1.0,häufig,sehr positiv
 5,Flüchtling,8,1.0,sehr häufig,sehr positiv
-6,Flüchtling,6,0.0,häufig,neutral o. umstritten
+6,Flüchtling,6,0.0,häufig,neutral
 7,Flüchtling,8,-0.5,sehr häufig,eher negativ
 8,Flüchtling,6,1000.0,häufig,
 1,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,6,1.0,häufig,sehr positiv
 2,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,6,1.0,häufig,sehr positiv
 3,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,4,1.0,ab und zu,sehr positiv
-4,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral o. umstritten
-5,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral o. umstritten
-6,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral o. umstritten
-7,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,1,0.0,selten/nie,neutral o. umstritten
-8,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,1,0.0,selten/nie,neutral o. umstritten
-1,Fremdarbeiter,6,0.0,häufig,neutral o. umstritten
+4,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral
+5,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral
+6,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,2,0.0,selten,neutral
+7,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,1,0.0,selten/nie,neutral
+8,Vertriebene:Vertriebener:Heimatvertrieben:Heimatvertriebener,1,0.0,selten/nie,neutral
+1,Fremdarbeiter,6,0.0,häufig,neutral
 2,Fremdarbeiter,5,-1.0,häufig/ab und zu,sehr negativ
 3,Fremdarbeiter,1,-1.0,selten/nie,sehr negativ
 4,Fremdarbeiter,1,1000.0,selten/nie,
@@ -23,33 +23,33 @@ epoch,keyword,expected_freq,expected_senti,written_freq,written_senti
 6,Fremdarbeiter,0,1000.0,nie,
 7,Fremdarbeiter,1000,1000.0,,
 8,Fremdarbeiter,1000,1000.0,,
-1,Gastarbeiter,4,0.0,ab und zu,neutral o. umstritten
-2,Gastarbeiter,8,0.0,sehr häufig,neutral o. umstritten
+1,Gastarbeiter,4,0.0,ab und zu,neutral
+2,Gastarbeiter,8,0.0,sehr häufig,neutral
 3,Gastarbeiter,4,-0.5,ab und zu,eher negativ
-4,Gastarbeiter,3,0.0,ab und zu/selten,neutral o. umstritten
-5,Gastarbeiter,2,0.0,selten,neutral o. umstritten
-6,Gastarbeiter,1,0.0,selten/nie,neutral o. umstritten
-7,Gastarbeiter,1,0.0,selten/nie,neutral o. umstritten
-8,Gastarbeiter,1,0.0,selten/nie,neutral o. umstritten
+4,Gastarbeiter,3,0.0,ab und zu/selten,neutral
+5,Gastarbeiter,2,0.0,selten,neutral
+6,Gastarbeiter,1,0.0,selten/nie,neutral
+7,Gastarbeiter,1,0.0,selten/nie,neutral
+8,Gastarbeiter,1,0.0,selten/nie,neutral
 1,Ausländer,6,1000.0,häufig,
 2,Ausländer,8,-0.5,sehr häufig,eher negativ
 3,Ausländer,8,-0.5,sehr häufig,eher negativ
 4,Ausländer,6,-1.0,häufig,sehr negativ
-5,Ausländer,6,0.0,häufig,neutral o. umstritten
+5,Ausländer,6,0.0,häufig,neutral
 6,Ausländer,5,-0.5,häufig/ab und zu,eher negativ
 7,Ausländer,4,-1.0,ab und zu,sehr negativ
 8,Ausländer,2,-1.0,selten,sehr negativ
 1,Migrant,1000,1000.0,,
 2,Migrant,1000,1000.0,,
 3,Migrant,1000,1000.0,,
-4,Migrant,2,0.0,selten,neutral o. umstritten
-5,Migrant,2,0.0,selten,neutral o. umstritten
-6,Migrant,2,0.0,selten,neutral o. umstritten
-7,Migrant,2,0.0,selten,neutral o. umstritten
-8,Migrant,2,0.0,selten,neutral o. umstritten
-1,Asylant,2,0.0,selten,neutral o. umstritten
-2,Asylant,4,0.0,ab und zu,neutral o. umstritten
-3,Asylant,8,0.0,sehr häufig,neutral o. umstritten
+4,Migrant,2,0.0,selten,neutral
+5,Migrant,2,0.0,selten,neutral
+6,Migrant,2,0.0,selten,neutral
+7,Migrant,2,0.0,selten,neutral
+8,Migrant,2,0.0,selten,neutral
+1,Asylant,2,0.0,selten,neutral
+2,Asylant,4,0.0,ab und zu,neutral
+3,Asylant,8,0.0,sehr häufig,neutral
 4,Asylant,6,-0.5,häufig,eher negativ
 5,Asylant,2,-0.5,selten,eher negativ
 6,Asylant,1,-0.5,selten/nie,eher negativ
@@ -71,22 +71,22 @@ epoch,keyword,expected_freq,expected_senti,written_freq,written_senti
 6,Asylmissbrauch:Asylmißbrauch,4,-1.0,ab und zu,sehr negativ
 7,Asylmissbrauch:Asylmißbrauch,2,-1.0,selten,sehr negativ
 8,Asylmissbrauch:Asylmißbrauch,2,-1.0,selten,sehr negativ
-1,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,1,0.0,selten/nie,neutral o. umstritten
-2,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,1,0.0,selten/nie,neutral o. umstritten
-3,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,4,0.0,ab und zu,neutral o. umstritten
-4,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,8,0.0,sehr häufig,neutral o. umstritten
-5,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,8,0.0,sehr häufig,neutral o. umstritten
-6,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,6,0.0,häufig,neutral o. umstritten
+1,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,1,0.0,selten/nie,neutral
+2,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,1,0.0,selten/nie,neutral
+3,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,4,0.0,ab und zu,neutral
+4,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,8,0.0,sehr häufig,neutral
+5,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,8,0.0,sehr häufig,neutral
+6,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,6,0.0,häufig,neutral
 7,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,8,-0.5,sehr häufig,eher negativ
-8,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,6,0.0,häufig,neutral o. umstritten
+8,Asylbewerber:Asylsuchende:Asylberechtigte:Asylberechtigter:Asylsuchender,6,0.0,häufig,neutral
 1,Integration,1,1000.0,selten/nie,
 2,Integration,4,1000.0,ab und zu,
-3,Integration,8,0.0,sehr häufig,neutral o. umstritten
-4,Integration,8,0.0,sehr häufig,neutral o. umstritten
-5,Integration,6,0.0,häufig,neutral o. umstritten
-6,Integration,4,0.0,ab und zu,neutral o. umstritten
-7,Integration,8,0.0,sehr häufig,neutral o. umstritten
-8,Integration,6,0.0,häufig,neutral o. umstritten
+3,Integration,8,0.0,sehr häufig,neutral
+4,Integration,8,0.0,sehr häufig,neutral
+5,Integration,6,0.0,häufig,neutral
+6,Integration,4,0.0,ab und zu,neutral
+7,Integration,8,0.0,sehr häufig,neutral
+8,Integration,6,0.0,häufig,neutral
 1,Einwanderungsland,0,1000.0,nie,
 2,Einwanderungsland,0,1000.0,nie,
 3,Einwanderungsland,4,-1.0,ab und zu,sehr negativ
@@ -98,9 +98,9 @@ epoch,keyword,expected_freq,expected_senti,written_freq,written_senti
 1,multikulturell,0,1000.0,nie,
 2,multikulturell,0,1000.0,nie,
 3,multikulturell,0,1000.0,nie,
-4,multikulturell,6,0.0,häufig,neutral o. umstritten
-5,multikulturell,6,0.0,häufig,neutral o. umstritten
-6,multikulturell,4,0.0,ab und zu,neutral o. umstritten
+4,multikulturell,6,0.0,häufig,neutral
+5,multikulturell,6,0.0,häufig,neutral
+6,multikulturell,4,0.0,ab und zu,neutral
 7,multikulturell,2,-1.0,selten,sehr negativ
 8,multikulturell,2,-1.0,selten,sehr negativ
 1,Migrationshintergrund,0,1000.0,nie,
@@ -117,5 +117,5 @@ epoch,keyword,expected_freq,expected_senti,written_freq,written_senti
 4,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,0,1000.0,nie,
 5,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,0,1000.0,nie,
 6,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,0,1000.0,nie,
-7,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,2,0.0,selten,neutral o. umstritten
-8,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,4,0.0,ab und zu,neutral o. umstritten
+7,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,2,0.0,selten,neutral
+8,Geflüchtete:Geflüchteter:Flüchtender:Flüchtende,4,0.0,ab und zu,neutral

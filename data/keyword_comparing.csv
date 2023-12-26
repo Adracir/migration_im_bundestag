@@ -3,7 +3,9 @@ Flüchtling,Asylant,,,
 Flüchtling,Vertriebene,Heimatvertrieben,Heimatvertriebener,
 Ausländer,Gastarbeiter,Asylant,,
 Flüchtling,Wirtschaftsflüchtling,Asylmißbrauch,Asylmissbrauch,
+Wirtschaftsflüchtling,Wirtschaftsasylant,Scheinasylant,,
 Asylant,Scheinasylant,Wirtschaftsasylant,Asylmißbrauch,Asylmissbrauch
+Asylbewerber,Asylsuchende,,,
 Asylbewerber,Asylmißbrauch,Asylmissbrauch,Scheinasylant,Wirtschaftsasylant
 Asylant,Integration,Asylmissbrauch,Asylmißbrauch,
 Asylbewerber,Integration,Asylmissbrauch,Asylmißbrauch,
