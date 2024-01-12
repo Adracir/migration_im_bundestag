@@ -29,8 +29,8 @@ if __name__ == '__main__':
     '''experiment.make_freq_slices()'''
     # plot frequencies
     '''for relative in [True, False]:
-        visualizations.plot_frequencies(relative=relative)'''
-    '''visualizations.plot_comparing_frequencies()'''
+        visualizations.plot_frequencies(relative=relative)
+    visualizations.plot_comparing_frequencies()'''
     # calculate and plot mean frequencies
     '''experiment.calculate_mean_frequency_over_all_epochs()'''
     '''visualizations.plot_mean_frequencies_as_bar_plot()'''
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # save nearest neighbors without alignment
     '''experiment.save_nearest_neighbors()'''
     # possibility to analyse some words more closely, see their context in the corpus
-    '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('multikulturell', 4)'''
+    '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Gastarbeit', 3)'''
     # align models to make visualization of nearest neighbors over time
     '''embeddings.align_according_to_occurrences()'''
     # add some missing aligned model for epoch 8 for words "multikulturell" & "Migrationshintergrund".
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: compare nearest neighbors from plot with those from csvs
-    '''visualizations.plot_tsne_according_to_occurrences(words=['Wirtschaftsflüchtling'], k=10, perplexity=5, keep_doubles=False, iter=3000)'''
+    '''visualizations.plot_tsne_according_to_occurrences(words=['Fremdarbeit'], k=10, perplexity=5, keep_doubles=False, iter=3000)'''
     # aggregate nearest neighbors of all time in word cloud
     '''experiment.calculate_sum_nearest_neighbors()'''
     '''visualizations.plot_nearest_neighbors_as_word_clouds()'''
@@ -85,4 +85,24 @@ if __name__ == '__main__':
     # plot these distances
     '''visualizations.plot_cosine_development_each_word()'''
     # plot similarities between certain groups of words over the years
-    '''visualizations.plot_exemplary_comparisons()'''
+    '''visualizations.plot_cosine_developments_of_word_groups()'''
+    # plot development of unaligned nearest neighbors with heatmap (prerequisite: calculate sum)
+    '''visualizations.plot_cosine_developments_nearest_neighbors_heatmap()'''
+    # print nearest neighbors
+    '''word = "Fremdarbeit"
+    epoch = 3
+    df = pd.read_csv('data/results/nearest_neighbors.csv')
+    df_aligned = pd.read_csv('data/results/nearest_neighbors_aligned.csv')
+    word_keys = [f'Word_{num}' for num in range(1, 11)]
+    df_filtered = df[(df['Keyword'] == word) & (df['Epoch'] == epoch)]
+    wordlist1 = df_filtered[word_keys].iloc[0].tolist()
+    df_aligned_filtered = df_aligned[(df_aligned['Keyword'] == word) & (df_aligned['Epoch'] == epoch)]
+    try:
+        wordlist2 = df_aligned_filtered[word_keys].iloc[0].tolist()
+    except IndexError:
+        wordlist2 = []
+    merged_list = wordlist1.copy()
+    for item in wordlist2:
+        if item not in merged_list:
+            merged_list.append(item)
+    print((", ").join(merged_list))'''

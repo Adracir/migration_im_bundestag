@@ -26,7 +26,8 @@ def find_counts_for_keywords(count_dict):
 
 
 def save_frequency_info_in_csv():
-    utils.write_info_to_csv('data/results/freqs.csv', ['epoch', 'keyword', 'count', 'freq', 'pMW'])
+    output_file_path = 'data/results/freqs.csv'
+    utils.write_info_to_csv(output_file_path, ['epoch', 'keyword', 'count', 'freq', 'pMW'])
     for epoch in range(1, 9):
         print(f'epoch {epoch}: simplifying corpus for counting operations')
         wordlist = prepared_corpus_to_wordlist(f"data/corpus/epoch{epoch}_prepared_lemma")
@@ -39,7 +40,7 @@ def save_frequency_info_in_csv():
             freq = count/total_words
             # calculate frequency per million words
             pMW = freq * 1000000
-            utils.write_info_to_csv('data/results/freqs.csv', [epoch, kw, count, freq, pMW], 'a')
+            utils.write_info_to_csv(output_file_path, [epoch, kw, count, freq, pMW], 'a')
 
 
 def include_written_form_in_expected_csv(method):
@@ -78,7 +79,8 @@ def find_first_occurrences_for_keywords():
     keywords = df['keyword'].tolist()
     # load freqs
     df = pd.read_csv('data/results/freqs.csv')
-    utils.write_info_to_csv("data/results/kw_occurrences.csv", ['keyword', 'first_occ_epoch', 'last_occ_epoch',
+    output_file_path ="data/results/kw_occurrences.csv"
+    utils.write_info_to_csv(output_file_path, ['keyword', 'first_occ_epoch', 'last_occ_epoch',
                                                                 'loophole'])
     # for each keyword find first & last non-null freq-epoch
     for kw in keywords:
@@ -95,7 +97,7 @@ def find_first_occurrences_for_keywords():
                 loopholes.append(f'{i}')
                 print(f"WARNING: {kw} has a loophole at {i}")
         # write into csv: keyword, first_occ_epoch, last_occ_epoch, loopholes
-        utils.write_info_to_csv("data/results/kw_occurrences.csv", [kw, first_occ_epoch, last_occ_epoch,
+        utils.write_info_to_csv(output_file_path, [kw, first_occ_epoch, last_occ_epoch,
                                                                     '_'.join(loopholes) if len(loopholes) > 0 else 0], mode='a')
 
 
@@ -110,12 +112,12 @@ def create_kw_occurrences_and_merge_to_keyword_list():
 def calculate_mean_frequency_over_all_epochs():
     # prepare output
     output_file_path = 'data/results/mean_freqs.csv'
-    utils.write_info_to_csv(output_file_path, ['word', 'mean_freq', 'rank'])
+    utils.write_info_to_csv(output_file_path, ['keyword', 'mean_freq', 'rank'])
     # iterate freqs.csv
     df = pd.read_csv('data/results/freqs.csv')
-    keywords = list(set(df['word'].tolist()))
+    keywords = list(set(df['keyword'].tolist()))
     # for each kw, get pMW and mean
-    results = [{'word': kw, 'mean_freq': np.mean(np.array(df[df['word'] == kw]['pMW'].tolist())) } for kw in keywords]
+    results = [{'keyword': kw, 'mean_freq': np.mean(np.array(df[df['keyword'] == kw]['pMW'].tolist())) } for kw in keywords]
     # Get indices that would sort mean_freqs
     sorted_indices = np.argsort([results[i]['mean_freq'] for i in range(len(results))])[::-1]
     # Create a new array with ranks
@@ -123,7 +125,7 @@ def calculate_mean_frequency_over_all_epochs():
         results[idx]['rank'] = i + 1
     # save in new df/csv
     for elem in results:
-        utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_freq'], elem['rank']], mode='a')
+        utils.write_info_to_csv(output_file_path, [elem['keyword'], elem['mean_freq'], elem['rank']], mode='a')
 
 
 # adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
@@ -320,7 +322,7 @@ def save_nearest_neighbors(aligned=False):
 
 
 # TODO: maybe remove sklearn.cosine_similarity! Then scikit-learn can be left out
-def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim=True, keep_doubles=False):
+def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim=True, k=15, keep_doubles=False):
     target_vectors = {}
     for epoch in epochs:
         epoch_written = utils.get_epoch_written_form_short(epoch)
@@ -457,3 +459,21 @@ def calculate_cosine_development_for_each_keyword():
                 next_epoch_row = epochs_df[epochs_df['epoch_id'] == next_epoch].iloc[0]
                 epoch_range_str = f'{epoch_row.written_form_short} bis {next_epoch_row.written_form_short}'
                 utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
+
+
+def calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs):
+    # initialize result variable
+    results = []
+    # doing this, also take care of cases where one of the words does not exist in epoch
+    for w in other_words:
+        results.append([])
+        for epoch in necessary_epochs:
+            word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors')
+            try:
+                val = word_vectors.similarity(main_word, w)
+            except KeyError:
+                print(f"One of the words {main_word}, {w} does not exist in epoch {epoch}!")
+                val = None
+            results[other_words.index(w)].append(val)
+            # TODO: avoid that one list is only [None]?
+    return results

@@ -4,7 +4,8 @@ Vertriebener,0,1,0,0,0
 Vertriebene,0,0,1,8,0
 Heimatvertriebener,1,0,1,1,0
 Heimatvertrieben,1,0,1,7,0
-Fremdarbeiter,0,0,1,1,0
+Fremdarbeiter,3,0,1,1,0
+Fremdarbeit,3,0,1,6,3_4_5
 Gastarbeiter,0,0,1,8,0
 Ausländer,0,0,1,8,0
 Migrant,0,0,5,8,0

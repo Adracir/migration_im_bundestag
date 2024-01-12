@@ -24,6 +24,9 @@ Heimatvertrieben,5,standard,-0.036040865
 Heimatvertrieben,6,standard,-0.033113495
 Heimatvertrieben,7,standard,-0.044962436
 Fremdarbeiter,1,standard,-0.089553624
+Fremdarbeit,1,standard,-0.09163087
+Fremdarbeit,2,standard,-0.10200085
+Fremdarbeit,6,standard,-0.08353941
 Gastarbeiter,1,standard,-0.050692685
 Gastarbeiter,2,standard,-0.15053588
 Gastarbeiter,3,standard,-0.1287328
@@ -128,6 +131,9 @@ Heimatvertrieben,5,political,0.07099283
 Heimatvertrieben,6,political,0.017871536
 Heimatvertrieben,7,political,0.0026620962
 Fremdarbeiter,1,political,-0.029981043
+Fremdarbeit,1,political,-0.06722023
+Fremdarbeit,2,political,-0.045530662
+Fremdarbeit,6,political,-0.09544304
 Gastarbeiter,1,political,0.001358727
 Gastarbeiter,2,political,-0.07463522
 Gastarbeiter,3,political,-0.028991338
@@ -232,6 +238,9 @@ Heimatvertrieben,5,combination,0.015854504
 Heimatvertrieben,6,combination,-0.0140076615
 Heimatvertrieben,7,combination,-0.023359109
 Fremdarbeiter,1,combination,-0.057787884
+Fremdarbeit,1,combination,-0.07906631
+Fremdarbeit,2,combination,-0.071699984
+Fremdarbeit,6,combination,-0.09328746
 Gastarbeiter,1,combination,-0.023598265
 Gastarbeiter,2,combination,-0.11284919
 Gastarbeiter,3,combination,-0.08313903

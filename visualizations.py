@@ -77,6 +77,7 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
     freqs_df = pd.read_csv('data/results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
+    # keywords_df = pd.read_csv('data/keywords2.csv')
     if include_expected:
         expected_df = pd.read_csv('data/expected_values.csv')
     # keywords = utils.load_keywords()
@@ -306,7 +307,7 @@ def plot_frequency_distribution_for_corpora_keywords():
 def plot_mean_frequencies_as_bar_plot():
     df = pd.read_csv('data/results/mean_freqs.csv')
     df = df.sort_values(by=['rank'], ascending=False)
-    words = df['word'].tolist()
+    words = df['keyword'].tolist()
     ranks = df['rank'].tolist()
     words_with_ranks = [f'{ranks[i]}. {words[i]}' for i in range(len(words))]
     freqs = df['mean_freq'].tolist()
@@ -542,6 +543,7 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
             green_colors = plt.cm.Greens(np.linspace(0.2, 0.9, 4))
             senti_colors = np.concatenate([red_colors, np.array([[1.0, 1.0, 1.0, 1.0]]), green_colors])
             slice_info_df = pd.read_csv('data/results/expected_senti_results_slices.csv')
+            slice_info_df = slice_info_df[slice_info_df['sentiword_set'] == sentiword_set]
             all_exp_df = pd.read_csv('data/expected_senti_translation.csv')
             for senti_key in slice_info_df['expected_senti_key'].tolist():
                 i = slice_info_df['expected_senti_key'].tolist().index(senti_key)
@@ -607,7 +609,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
     # plot target word across all timeslices
     print("\nPlotting target word...")
     print("Target word: ", target_word)
-    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim, keep_doubles)
+    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim, k, keep_doubles)
     words_to_plot = list(target_vectors.keys())
     len_words = len(words_to_plot)
     if len_words > 2:
@@ -757,8 +759,7 @@ def plot_cosine_development_each_word():
             print(f"plot for {kw} saved")
 
 
-def plot_exemplary_comparisons():
-    # TODO: maybe move all experimental calculations to experiment.py
+def plot_cosine_developments_of_word_groups(show_result_groups=True):
     # retrieve keywords that should be compared
     df = pd.read_csv('data/keyword_comparing.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
@@ -767,25 +768,12 @@ def plot_exemplary_comparisons():
     for index, row in df.iterrows():
         # from main word, calculate the similarity for each other word for each epoch
         main_word = row.main_word
-        # TODO: other words könnten ja auch nicht-keywords sein, die ich einfach gerne aus dem Pool des Wissens heraus testen würde!
         other_words = [row[column] for column in ['second_word', 'third_word', 'fourth_word', 'fifth_word'] if pd.notna(row[column])]
         # get necessary epochs
         kw_row = keywords_df[keywords_df['keyword'] == main_word].iloc[0]
         necessary_epochs = [item for item in range(kw_row.first_occ_epoch, kw_row.last_occ_epoch + 1) if
                             str(item) not in kw_row.loophole]
-        # initialize result variable
-        results = []
-        # doing this, also take care of cases where one of the words does not exist in epoch
-        for w in other_words:
-            results.append([])
-            for epoch in necessary_epochs:
-                word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors')
-                try:
-                    val = word_vectors.similarity(main_word, w)
-                except KeyError:
-                    print(f"One of the words {main_word}, {w} does not exist in epoch {epoch}!")
-                    val = None
-                results[other_words.index(w)].append(val)
+        results = experiment.calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs)
         # plot as many lines as other words
         title = f'Entwicklung im Verhältnis zum Schlagwort {main_word}'
         path = f'data/results/plots/connotations/comparing_development_{main_word}_{"_".join(other_words)}_plot.png'
@@ -806,16 +794,77 @@ def plot_exemplary_comparisons():
         # plot similarities
         for i in range(0, len(other_words)):
             plt.plot(x, results[i], f'{colors[i]}-', label=other_words[i])
+            # add labels to points
+            for a, txt in enumerate(results[i]):
+                if results[i][a] is not None:
+                    plt.text(x[a], results[i][a], f'{results[i][a]:.2f}', color=colors[i], ha='center', va='bottom')
+        max_val = max([max(value for value in sublist if value is not None) for sublist in results if sublist != [None]])
+        if show_result_groups:
+            # plot blue areas to give a hint on the dimensions
+            blue_colors = plt.cm.Blues(np.linspace(0.2, 0.9, 5))
+            labels = ['wenig/gar nicht ähnlich', 'geringfügig ähnlich', 'moderat ähnlich', 'ähnlich', 'sehr ähnlich']
+            for index in range(1, 6):
+                max_slice = index * 0.2
+                min_slice = (index - 1) * 0.2 if index != 1 else -0.2
+                mean_slice = np.mean([max_slice, min_slice]) if index != 1 else 0.1
+                ax.axhspan(min_slice, max_slice, facecolor=blue_colors[index - 1], alpha=0.35)
+                # if the slice contains result points, plot its' name to the side
+                if not max_val <= min_slice:
+                    plt.text(0.1, mean_slice,
+                             labels[index - 1],
+                             color=blue_colors[index - 1], fontsize=10)
+        ax.set_ylim([-0.025, max_val + 0.025])
         # plot legend
         plt.legend()
-        # set tight layout (so that nothing is cut out)
-        plt.tight_layout()
         # save diagram
         fig = plt.gcf()
         fig.set_size_inches(10, 8)
         fig.savefig(path)
         plt.close(fig)
         print(f"plot saved")
+
+
+def plot_cosine_developments_nearest_neighbors_heatmap():
+    # retrieve keywords that should be compared
+    agg_df = pd.read_csv('data/results/aggregated_nearest_neighbors.csv')
+    df = pd.read_csv('data/results/nearest_neighbors.csv')
+    epoch_df = pd.read_csv('data/epochs.csv')
+    keywords = agg_df['Keyword'].tolist()
+    for kw in keywords:
+        # retrieve list of similar words
+        kw_df = df[df['Keyword'] == kw]
+        word_keys = [f'Word_{num}' for num in range(1, 21)]
+        all_words = agg_df[agg_df['Keyword'] == kw][word_keys].iloc[0].dropna().tolist()
+        sim_keys = [f'Similarity_{num}' for num in range(1, 11)]
+        all_similarities = []
+        epochs = []
+        for index, row in kw_df.iterrows():
+            words = row[word_keys[:10]].tolist()
+            similarities = row[sim_keys].tolist()
+            # retrieve their similarities in the different epochs. if not given, say 0
+            all_epoch_sims = [similarities[words.index(word)] if word in words else 0 for word in all_words]
+            epochs.append(row.Epoch)
+            all_similarities.append(all_epoch_sims)
+        # plot
+        heatmap_data = np.array(all_similarities).transpose()
+        plt.imshow(heatmap_data, cmap='OrRd', aspect='auto')
+        plt.colorbar(label='Cosine Similarity')
+        written_epochs = [epoch_df[epoch_df['epoch_id'] == epoch]['written_form_short'].iloc[0] for epoch in epochs]
+        # plot grid
+        for i in range(len(heatmap_data) + 1):
+            plt.axhline(i - 0.5, color='grey', linewidth=0.8)
+        for i in range(len(heatmap_data[1]) + 1):
+            plt.axvline(i - 0.5, color='grey', linewidth=0.8)
+        plt.xticks(np.arange(len(written_epochs)), written_epochs, rotation=90)
+        plt.yticks(np.arange(len(all_words)), all_words)
+        plt.xlabel("Epochen")
+        plt.ylabel("Wörter")
+        plt.title(f"Word Similarities Heatmap: {kw}")
+        plt.tight_layout()
+        fig = plt.gcf()
+        fig.savefig(f'data/results/plots/connotations/heatmaps/{kw}_heatmap.png')
+        plt.close(fig)
+        print(f"plot for kw {kw} saved")
 
 
 # words not given in corpus:
