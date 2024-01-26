@@ -566,6 +566,23 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
         print(f"plot {index} saved")
 
 
+def plot_senti_distribution_():
+    df = pd.read_csv('data/results/senti.csv')
+    filtered_df = df[df['sentiword_set'] == 'combination']
+    counts = filtered_df['value'].tolist()
+    sorted_counts = sorted(counts, reverse=True)
+    ranks = list(range(1, len(sorted_counts) + 1))
+    plt.plot(ranks, sorted_counts, linestyle='-', color='b', alpha=0.5)
+    plt.suptitle(f'Verteilung der Senti-Werte in Relation zum Rang', fontsize=16, fontweight="bold")
+    # plt.title(f'Gesamtgröße des Vokabulars: {len(ranks)} Wörter. X-Achse zur Übersichtlichkeit begrenzt')
+    plt.xlabel('Rang')
+    plt.ylabel('Senti-Wert')
+    plt.grid(True)
+    fig = plt.gcf()
+    fig.savefig(f'data/results/plots/senti/distribution_combination.png')
+    plt.close(fig)
+
+
 def plot_mean_sentiments_as_bar_plot():
     df = pd.read_csv('data/results/mean_senti.csv')
     df = df.sort_values(by=['rank'], ascending=False)

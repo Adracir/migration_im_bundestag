@@ -230,23 +230,29 @@ def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
             first_list = negative_values
         else:
             first_list = positive_values
-        # create 4 equally big slices for the first list
-        first_slices = np.array_split(first_list, 4)
+        # create 9 equally big slices for the first list
+        first_slices = np.array_split(first_list, 9)
+        first_slices_combined = [[] for _ in range(4)]
+        # combine first 8 arrays to 4 big ones, add smaller slice to the end
+        for i in [0, 2, 4, 6]:
+            first_slices_combined[int(i * 0.5)] = np.concatenate((first_slices[i], first_slices[i + 1]))
+        neutral_slice_first_half = first_slices[8]
         # guarantee smooth transitions without noticeable gaps
-        for i in range(len(first_slices) - 1):
-            first_slices[i][-1] = first_slices[i + 1][0] - 0.0001
+        for i in range(len(first_slices_combined) - 1):
+            first_slices_combined[i][-1] = first_slices_combined[i + 1][0] - 0.0001
         # create 4 slices for the second set, but according to the ranges of the first set to obtain symmetry
-        second_slices = [[0 - val for val in nested_list[::-1]] for nested_list in first_slices]
+        second_slices = [[0 - val for val in nested_list[::-1]] for nested_list in first_slices_combined]
         second_slices.reverse()
         slices = []
         # create slice for neutral values, ensuring no gaps
         # and unite all slices to one nested list in ascending order
-        if first_slices[0][0] < 0:
-            neutral_slice = [[first_slices[-1][-1] + 0.0001, 0.0, second_slices[0][0] - 0.0001]]
-            slices = first_slices + neutral_slice + second_slices
+        if first_slices_combined[0][0] < 0:
+            # TODO: update generation of neutral slice by combining two smaller arrays!
+            neutral_slice = [[neutral_slice_first_half[0] - 0.0001, 0.0, -neutral_slice_first_half[0] + 0.0001]]
+            slices = first_slices_combined + neutral_slice + second_slices
         elif second_slices[0][0] < 0:
-            neutral_slice = [[second_slices[-1][-1] + 0.0001, 0.0, first_slices[0][0] - 0.0001]]
-            slices = second_slices + neutral_slice + first_slices
+            neutral_slice = [[-neutral_slice_first_half[0] - 0.0001, 0.0, neutral_slice_first_half[0] + 0.0001]]
+            slices = second_slices + neutral_slice + first_slices_combined
         expected_translation_df = pd.read_csv('data/expected_senti_translation.csv')
         expected_senti_keys.extend(sorted(expected_translation_df['senti_value'].tolist()[:9]))
         senti_mean.extend([np.mean(s) for s in slices])

@@ -29,8 +29,8 @@ if __name__ == '__main__':
     '''experiment.make_freq_slices()'''
     # plot frequencies
     '''for relative in [True, False]:
-        visualizations.plot_frequencies(relative=relative)
-    visualizations.plot_comparing_frequencies()'''
+        visualizations.plot_frequencies(relative=relative)'''
+    '''visualizations.plot_comparing_frequencies()'''
     # calculate and plot mean frequencies
     '''experiment.calculate_mean_frequency_over_all_epochs()'''
     '''visualizations.plot_mean_frequencies_as_bar_plot()'''
@@ -56,15 +56,15 @@ if __name__ == '__main__':
     # save senti slices of senti results for plots
     '''experiment.make_senti_slices()'''
     # plot senti
-    '''visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)'''
-    '''visualizations.plot_comparing_sentiments()'''
+    visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)
+    visualizations.plot_comparing_sentiments()
     # calculate and plot mean sentiment over all time
     '''experiment.calculate_mean_sentiment_over_all_epochs()'''
     '''visualizations.plot_mean_sentiments_as_bar_plot()'''
     # save nearest neighbors without alignment
     '''experiment.save_nearest_neighbors()'''
     # possibility to analyse some words more closely, see their context in the corpus
-    '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Gastarbeit', 3)'''
+    '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Pap', 3)'''
     # align models to make visualization of nearest neighbors over time
     '''embeddings.align_according_to_occurrences()'''
     # add some missing aligned model for epoch 8 for words "multikulturell" & "Migrationshintergrund".
@@ -88,21 +88,3 @@ if __name__ == '__main__':
     '''visualizations.plot_cosine_developments_of_word_groups()'''
     # plot development of unaligned nearest neighbors with heatmap (prerequisite: calculate sum)
     '''visualizations.plot_cosine_developments_nearest_neighbors_heatmap()'''
-    # print nearest neighbors
-    '''word = "Fremdarbeit"
-    epoch = 3
-    df = pd.read_csv('data/results/nearest_neighbors.csv')
-    df_aligned = pd.read_csv('data/results/nearest_neighbors_aligned.csv')
-    word_keys = [f'Word_{num}' for num in range(1, 11)]
-    df_filtered = df[(df['Keyword'] == word) & (df['Epoch'] == epoch)]
-    wordlist1 = df_filtered[word_keys].iloc[0].tolist()
-    df_aligned_filtered = df_aligned[(df_aligned['Keyword'] == word) & (df_aligned['Epoch'] == epoch)]
-    try:
-        wordlist2 = df_aligned_filtered[word_keys].iloc[0].tolist()
-    except IndexError:
-        wordlist2 = []
-    merged_list = wordlist1.copy()
-    for item in wordlist2:
-        if item not in merged_list:
-            merged_list.append(item)
-    print((", ").join(merged_list))'''
