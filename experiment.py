@@ -110,6 +110,7 @@ def create_kw_occurrences_and_merge_to_keyword_list():
 
 
 def calculate_mean_frequency_over_all_epochs():
+    # TODO: maybe don't write to csv but read it from visualizations method
     # prepare output
     output_file_path = 'data/results/mean_freqs.csv'
     utils.write_info_to_csv(output_file_path, ['keyword', 'mean_freq', 'rank'])
@@ -126,6 +127,48 @@ def calculate_mean_frequency_over_all_epochs():
     # save in new df/csv
     for elem in results:
         utils.write_info_to_csv(output_file_path, [elem['keyword'], elem['mean_freq'], elem['rank']], mode='a')
+
+
+def calculate_mean_frequency_over_all_keywords():
+    # iterate freqs.csv
+    df = pd.read_csv('data/results/freqs.csv')
+    epochs_df = pd.read_csv('data/epochs.csv')
+    epochs = epochs_df['written_form_short'].tolist()
+    # for each kw, get mean pMW (excluding 0 values)
+    results = [{'epoch': epoch, 'mean_freq': np.mean(np.array(df[(df['epoch'] == epochs.index(epoch) + 1) & (df['pMW'] != 0)]['pMW'].tolist()))} for epoch in epochs]
+    return results
+
+
+def get_freq_maxima_for_epochs():
+    df = pd.read_csv('data/results/freqs.csv')
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
+    epochs_df = pd.read_csv('data/epochs.csv')
+    keywords = keywords_df['keyword'].tolist()
+    indices = []
+    # iterate keywords
+    for kw in keywords:
+        kw_df = df[df['keyword'] == kw]
+        # if not all pMW values are the same
+        if kw_df['pMW'].nunique() > 1:
+            # find index of maximum freq (per million words)
+            index_of_max_freq = kw_df['pMW'].idxmax()
+            indices.append(index_of_max_freq)
+    # make df with only rows containing a minimum value of a keyword
+    reduced_df = df.iloc[indices]
+    # filter df for combined words: only keep the smaller value, if a word is combined with another one
+    for combined_index in [index for index in set(keywords_df['combine_group']) if index != 0]:
+        combined_words = keywords_df[keywords_df['combine_group'] == combined_index]['keyword'].tolist()
+        combined_df = reduced_df[reduced_df['keyword'].isin(combined_words)]
+        # drop smaller value if there are two
+        if len(combined_df) > 1:
+            bigger_idx = combined_df['pMW'].idxmin()
+            reduced_df = reduced_df.drop([bigger_idx])
+    # return maxima count
+    max_count_dict = reduced_df.groupby('epoch').size().to_dict()
+    for epoch_id in range(1, 9):
+        epoch_name = epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]
+        max_count_dict[epoch_id] = {'count': max_count_dict.get(epoch_id, 0), 'name': epoch_name}
+    return dict(sorted(max_count_dict.items()))
 
 
 # adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
@@ -288,6 +331,50 @@ def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
         utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_senti'], elem['rank']], mode='a')
 
 
+def calculate_mean_sentiment_over_all_keywords(sentiword_set="combination"):
+    # iterate senti.csv
+    df = pd.read_csv('data/results/senti.csv')
+    senti_df = df[df['sentiword_set'] == sentiword_set]
+    epochs_df = pd.read_csv('data/epochs.csv')
+    epochs = epochs_df['written_form_short'].tolist()
+    # for each kw, get pMW and mean
+    results = [{'epoch': epoch, 'mean_senti': np.mean(np.array(df[df['epoch'] == epochs.index(epoch) + 1]['value'].tolist()))} for epoch in epochs]
+    return results
+
+
+def get_senti_minima_for_epochs(sentiword_set='combination'):
+    df = pd.read_csv('data/results/senti.csv')
+    filtered_df = df[df['sentiword_set'] == sentiword_set]
+    keywords_df = pd.read_csv('data/keywords_merged.csv')
+    epochs_df = pd.read_csv('data/epochs.csv')
+    keywords = keywords_df['keyword'].tolist()
+    indices = []
+    # iterate keywords
+    for kw in keywords:
+        kw_df = filtered_df[filtered_df['word'] == kw]
+        # if not all values are the same
+        if kw_df['value'].nunique() > 1:
+            # find index and save of minimum value
+            index_of_min_senti = kw_df['value'].idxmin()
+            indices.append(index_of_min_senti)
+    # make df with only rows containing a minimum value of a keyword
+    reduced_df = df.iloc[indices]
+    # filter df for combined words: only keep the smaller value, if a word is combined with another one
+    for combined_index in [index for index in set(keywords_df['combine_group']) if index != 0]:
+        combined_words = keywords_df[keywords_df['combine_group'] == combined_index]['keyword'].tolist()
+        combined_df = reduced_df[reduced_df['word'].isin(combined_words)]
+        # drop bigger value if there are two
+        if len(combined_df) > 1:
+            bigger_idx = combined_df['value'].idxmax()
+            reduced_df = reduced_df.drop([bigger_idx])
+    # return minima count
+    min_count_dict = reduced_df.groupby('epoch').size().to_dict()
+    for epoch_id in range(1, 9):
+        epoch_name = epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]
+        min_count_dict[epoch_id] = {'count': min_count_dict[epoch_id], 'name': epoch_name}
+    return min_count_dict
+
+
 def save_nearest_neighbors(aligned=False):
     if aligned:
         df = pd.read_csv('data/keywords_merged.csv')
@@ -398,42 +485,6 @@ def calculate_sum_nearest_neighbors(aligned=False):
         utils.write_info_to_csv(out_path, [kw] + output_list, 'a')
 
 
-# TODO: maybe delete, I think it's never used
-def comparing_connotations(model1, model2, word, k=10, verbose=True):
-    """ copied from https://gensim.narkive.com/ZsBAPGm4/11863-word2vec-alignment
-    calculates a relative semantic shift between a word in two different models
-    - `model1`, `model2`: Are gensim word2vec models. KeyedVectors
-    - `word` is a string representation of a given word.
-    - `k` is the size of the word's neighborhood (# of its closest words in its
-    vector space).
-    """
-    # Check that this word is present in both models
-    # if not word in model1.wv.vocab or not word in model2.wv.vocab:
-    if not word in model1.key_to_index or not word in model2.key_to_index:
-        print("!! Word %s not present in both models." % word)
-        return None
-    # Get the two neighborhoods
-    neighborhood1 = [w for w, c in model1.most_similar(word, topn=k)]
-    neighborhood2 = [w for w, c in model2.most_similar(word, topn=k)]
-    # Print?
-    if verbose:
-        print('>> Neighborhood of connotations of the word "%s" in model1:' % word)
-        print(', '.join(neighborhood1))
-        print('>> Neighborhood of connotations of the word "%s" in model2:' % word)
-        print(', '.join(neighborhood2))
-    # Get the 'meta' neighborhood (both combined)
-    meta_neighborhood = list(set(neighborhood1) | set(neighborhood2))
-    # Filter the meta neighborhood so that it contains only words present in both models
-    meta_neighborhood = [w for w in meta_neighborhood if w in model1.key_to_index and w in model2.key_to_index]
-    # For both models, get a similarity vector between the focus word and all of the words in the meta neighborhood
-    vector1 = [model1.similarity(word, w) for w in meta_neighborhood]
-    vector2 = [model2.similarity(word, w) for w in meta_neighborhood]
-    # Compute the cosine distance *between* those similarity vectors
-    dist = cosine(vector1, vector2)
-    # Return this cosine distance -- a measure of the relative semantic shift for this word between these two models
-    return dist
-
-
 def calculate_cosine_development_for_each_keyword():
     # load keywords and epochs
     df = pd.read_csv('data/keywords_merged.csv')
@@ -459,8 +510,6 @@ def calculate_cosine_development_for_each_keyword():
                 vector1 = wordvectors1[kw]
                 vector2 = wordvectors2[kw]
                 dist = cosine(vector1, vector2)
-                # TODO: test this alternative with unaligned vectors
-                # dist = comparing_connotations(wordvectors1, wordvectors2, kw)
                 epoch_row = epochs_df[epochs_df['epoch_id'] == epoch].iloc[0]
                 next_epoch_row = epochs_df[epochs_df['epoch_id'] == next_epoch].iloc[0]
                 epoch_range_str = f'{epoch_row.written_form_short} bis {next_epoch_row.written_form_short}'

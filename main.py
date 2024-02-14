@@ -34,6 +34,8 @@ if __name__ == '__main__':
     # calculate and plot mean frequencies
     '''experiment.calculate_mean_frequency_over_all_epochs()'''
     '''visualizations.plot_mean_frequencies_as_bar_plot()'''
+    visualizations.plot_mean_frequencies_over_epochs_as_bar_plot()
+    '''visualizations.plot_frequency_maxima_for_epochs_as_bar_plot()'''
     # use preprocessed text to train and save cbow models
     '''for epoch_id in range(1, 9):
         prepared_corpus = utils.unpickle(f"data/corpus/epoch{epoch_id}_prepared_lemma")
@@ -56,11 +58,13 @@ if __name__ == '__main__':
     # save senti slices of senti results for plots
     '''experiment.make_senti_slices()'''
     # plot senti
-    visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)
-    visualizations.plot_comparing_sentiments()
+    '''visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)
+    visualizations.plot_comparing_sentiments()'''
     # calculate and plot mean sentiment over all time
     '''experiment.calculate_mean_sentiment_over_all_epochs()'''
     '''visualizations.plot_mean_sentiments_as_bar_plot()'''
+    '''visualizations.plot_mean_senti_over_epochs_as_bar_plot()'''
+    '''visualizations.plot_senti_minima_for_epochs_as_bar_plot()'''
     # save nearest neighbors without alignment
     '''experiment.save_nearest_neighbors()'''
     # possibility to analyse some words more closely, see their context in the corpus

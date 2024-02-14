@@ -12,7 +12,6 @@ import math
 from wordcloud import WordCloud
 
 
-# TODO: keep semantic difference between "Heimatvertriebener" and "Heimatvertrieben"? Don't combine?
 # Helper methods  # TODO: move to utils?
 def skip_some_vals(x, y, val_to_skip=1000):
     x_segments = []
@@ -304,6 +303,7 @@ def plot_frequency_distribution_for_corpora_keywords():
         print(f'epoch {epoch} plotted')
 
 
+# TODO: delete
 def plot_mean_frequencies_as_bar_plot():
     df = pd.read_csv('data/results/mean_freqs.csv')
     df = df.sort_values(by=['rank'], ascending=False)
@@ -323,6 +323,38 @@ def plot_mean_frequencies_as_bar_plot():
     fig = plt.gcf()
     fig.set_size_inches(9, 8)
     fig.savefig('data/results/plots/frequencies/mean_freqs.png')
+    plt.close(fig)
+
+
+def plot_mean_frequencies_over_epochs_as_bar_plot():
+    results = experiment.calculate_mean_frequency_over_all_keywords()
+    freqs = [results[i].get('mean_freq') for i in range(len(results))]
+    epochs = [results[i].get('epoch') for i in range(len(results))]
+    # creating the bar plot
+    plt.bar(epochs, freqs, color='maroon')
+    # for i in range(len(words_with_ranks)):
+    # plt.text(freqs[i], i, f'  {math.ceil(freqs[i] * 10) / 10}', va='center')
+    plt.ylabel("durchschnittliche Häufigkeit der Schlagwörter")
+    plt.xlabel("Epochen")
+    plt.title("Durchschnittliche Häufigkeiten aller Schlagwörter in den jeweiligen Epochen, \n1949-2023")
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches(9, 8)
+    fig.savefig('data/results/plots/frequencies/mean_freqs_for_epochs.png')
+    plt.close(fig)
+
+
+def plot_frequency_maxima_for_epochs_as_bar_plot():
+    maxima = experiment.get_freq_maxima_for_epochs()
+    # creating the bar plot
+    plt.bar([entry['name'] for entry in maxima.values()], [entry['count'] for entry in maxima.values()], color='maroon')
+    plt.ylabel("Anzahl der Häufigkeits-Maxima")
+    plt.xlabel("Epochen")
+    plt.title("Häufigkeits-Maxima aller Schlagwörter in den jeweiligen Epochen, \n1949-2023")
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches(9, 8)
+    fig.savefig('data/results/plots/frequencies/freqs_maxima.png')
     plt.close(fig)
 
 
@@ -606,7 +638,38 @@ def plot_mean_sentiments_as_bar_plot():
     plt.close(fig)
 
 
-# Connotations
+# TODO: delete
+def plot_mean_senti_over_epochs_as_bar_plot():
+    results = experiment.calculate_mean_sentiment_over_all_keywords()
+    senti = [results[i].get('mean_senti') for i in range(len(results))]
+    epochs = [results[i].get('epoch') for i in range(len(results))]
+    # creating the bar plot
+    plt.bar(epochs, senti, color='maroon')
+    plt.ylabel("durchschnittliche Wertung der Schlagwörter")
+    plt.xlabel("Epochen")
+    plt.title("Durchschnittliche Wertungen aller Schlagwörter in den jeweiligen Epochen, \n1949-2023")
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches(9, 8)
+    fig.savefig('data/results/plots/senti/mean_senti_for_epochs.png')
+    plt.close(fig)
+
+
+def plot_senti_minima_for_epochs_as_bar_plot():
+    minima = experiment.get_senti_minima_for_epochs()
+    # creating the bar plot
+    plt.bar([entry['name'] for entry in minima.values()], [entry['count'] for entry in minima.values()], color='maroon')
+    plt.ylabel("Anzahl der Wertungs-Minima")
+    plt.xlabel("Epochen")
+    plt.title("Wertungs-Minima aller Schlagwörter in den jeweiligen Epochen, \n1949-2023")
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches(9, 8)
+    fig.savefig('data/results/plots/senti/senti_minima.png')
+    plt.close(fig)
+
+
+# Word Associations
 # Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
 # label points with words
 def label_point(x, y, val, type, sim, ax):
@@ -673,7 +736,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         lc = mc.LineCollection(lines, linewidths=1)
         ax.add_collection(lc)
         fig = ax.get_figure()
-        fig.savefig(f'data/results/plots/connotations/tsne_{target_word}_{"_".join(map(str, epochs))}_perpl{perplexity}_k{k}_{"gensim" if mode_gensim else "sklearn"}{"_doubles" if keep_doubles else ""}_steps_{iter}.png')
+        fig.savefig(f'data/results/plots/word_associations/tsne/tsne_{target_word}_{"_".join(map(str, epochs))}_perpl{perplexity}_k{k}_{"gensim" if mode_gensim else "sklearn"}{"_doubles" if keep_doubles else ""}_steps_{iter}.png')
         plt.close()
 
 
@@ -692,7 +755,7 @@ def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, mode_ge
                     if k == 'flex':
                         if len(necessary_epochs) <= 3:
                             final_k = 18
-                        elif len(necessary_epochs) < 6 and len(necessary_epochs) > 3:
+                        elif 6 > len(necessary_epochs) > 3:
                             final_k = 12
                         else:
                             final_k = 8
@@ -704,6 +767,7 @@ def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, mode_ge
                       f"Please re-do alignment and/or check your folder structure!")
 
 
+# TODO: delete
 def plot_nearest_neighbors_as_word_clouds():
     df = pd.read_csv('data/results/aggregated_nearest_neighbors.csv')
     keywords = df['Keyword'].tolist()
@@ -724,10 +788,11 @@ def plot_nearest_neighbors_as_word_clouds():
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis('off')
         fig = plt.gcf()
-        fig.savefig(f'data/results/plots/connotations/word_cloud_{kw}.png')
+        fig.savefig(f'data/results/plots/word_associations/word_cloud_{kw}.png')
         plt.close(fig)
 
 
+# TODO: delete
 def plot_cosine_development_each_word():
     distances_df = pd.read_csv('data/results/cosine_developments.csv')
     # epochs_df = pd.read_csv('data/epochs.csv')
@@ -738,7 +803,7 @@ def plot_cosine_development_each_word():
         if keywords_df[keywords_df['keyword'] == kw].ignore.iloc[0] == 0 and kw != "Wirtschaftsasylant":
             kw_distances_df = distances_df[distances_df['keyword'] == kw]
             title = f'Entwicklung von {kw}'
-            path = f'data/results/plots/connotations/dist_development_{kw}_plot.png'
+            path = f'data/results/plots/word_associations/dist_development_{kw}_plot.png'
             epochs_df = pd.read_csv('data/epochs.csv')
             first_epochs = kw_distances_df['first_epoch'].tolist()
             last_epoch = kw_distances_df['next_epoch'].tolist()[-1]
@@ -793,7 +858,7 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
         results = experiment.calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs)
         # plot as many lines as other words
         title = f'Entwicklung im Verhältnis zum Schlagwort {main_word}'
-        path = f'data/results/plots/connotations/comparing_development_{main_word}_{"_".join(other_words)}_plot.png'
+        path = f'data/results/plots/word_associations/comparing/comparing_development_{main_word}_{"_".join(other_words)}_plot.png'
         filtered_epochs_df = epochs_df[epochs_df['epoch_id'].isin(necessary_epochs)]
         written_forms = filtered_epochs_df['written_form'].tolist()
         # title
@@ -879,7 +944,7 @@ def plot_cosine_developments_nearest_neighbors_heatmap():
         plt.title(f"Word Similarities Heatmap: {kw}")
         plt.tight_layout()
         fig = plt.gcf()
-        fig.savefig(f'data/results/plots/connotations/heatmaps/{kw}_heatmap.png')
+        fig.savefig(f'data/results/plots/word_associations/heatmaps/{kw}_heatmap.png')
         plt.close(fig)
         print(f"plot for kw {kw} saved")
 
