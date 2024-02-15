@@ -26,7 +26,7 @@ def find_counts_for_keywords(count_dict):
 
 
 def save_frequency_info_in_csv():
-    output_file_path = 'data/results/freqs.csv'
+    output_file_path = 'results/freqs.csv'
     utils.write_info_to_csv(output_file_path, ['epoch', 'keyword', 'count', 'freq', 'pMW'])
     for epoch in range(1, 9):
         print(f'epoch {epoch}: simplifying corpus for counting operations')
@@ -56,7 +56,7 @@ def include_written_form_in_expected_csv(method):
 
 
 def make_freq_slices():
-    freqs_df = pd.read_csv('data/results/freqs.csv')
+    freqs_df = pd.read_csv('results/freqs.csv')
     all_freqs = freqs_df['pMW'].tolist()
     all_freqs_arr = np.array(all_freqs)
     sorted_freqs = sorted(all_freqs_arr[all_freqs_arr != 0.0])
@@ -78,8 +78,8 @@ def find_first_occurrences_for_keywords():
     df = pd.read_csv('data/keywords.csv')
     keywords = df['keyword'].tolist()
     # load freqs
-    df = pd.read_csv('data/results/freqs.csv')
-    output_file_path ="data/results/kw_occurrences.csv"
+    df = pd.read_csv('results/freqs.csv')
+    output_file_path = "results/kw_occurrences.csv"
     utils.write_info_to_csv(output_file_path, ['keyword', 'first_occ_epoch', 'last_occ_epoch',
                                                                 'loophole'])
     # for each keyword find first & last non-null freq-epoch
@@ -104,7 +104,7 @@ def find_first_occurrences_for_keywords():
 def create_kw_occurrences_and_merge_to_keyword_list():
     find_first_occurrences_for_keywords()
     df1 = pd.read_csv('data/keywords.csv')
-    df2 = pd.read_csv('data/results/kw_occurrences.csv')
+    df2 = pd.read_csv('results/kw_occurrences.csv')
     merged_df = df1.merge(df2, on='keyword', how='outer')
     merged_df.to_csv('data/keywords_merged.csv', index=False)
 
@@ -112,10 +112,10 @@ def create_kw_occurrences_and_merge_to_keyword_list():
 def calculate_mean_frequency_over_all_epochs():
     # TODO: maybe don't write to csv but read it from visualizations method
     # prepare output
-    output_file_path = 'data/results/mean_freqs.csv'
+    output_file_path = 'results/mean_freqs.csv'
     utils.write_info_to_csv(output_file_path, ['keyword', 'mean_freq', 'rank'])
     # iterate freqs.csv
-    df = pd.read_csv('data/results/freqs.csv')
+    df = pd.read_csv('results/freqs.csv')
     keywords = list(set(df['keyword'].tolist()))
     # for each kw, get pMW and mean
     results = [{'keyword': kw, 'mean_freq': np.mean(np.array(df[df['keyword'] == kw]['pMW'].tolist())) } for kw in keywords]
@@ -131,7 +131,7 @@ def calculate_mean_frequency_over_all_epochs():
 
 def calculate_mean_frequency_over_all_keywords():
     # iterate freqs.csv
-    df = pd.read_csv('data/results/freqs.csv')
+    df = pd.read_csv('results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     epochs = epochs_df['written_form_short'].tolist()
     # for each kw, get mean pMW (excluding 0 values)
@@ -140,7 +140,7 @@ def calculate_mean_frequency_over_all_keywords():
 
 
 def get_freq_maxima_for_epochs():
-    df = pd.read_csv('data/results/freqs.csv')
+    df = pd.read_csv('results/freqs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords = keywords_df['keyword'].tolist()
@@ -217,7 +217,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
     pos_words = df_pos["word"].tolist()
     neg_words = df_neg["word"].tolist()
     # prepare output csv
-    output_file_path = f"data/results/senti{'_with_axis' if with_axis else ''}.csv"
+    output_file_path = f"results/senti{'_with_axis' if with_axis else ''}.csv"
     if not os.path.exists(output_file_path):
         utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
     # iterate keywords
@@ -243,8 +243,8 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
 
 
 def normalize_with_axis_senti_and_save_to_csv():
-    senti_df = pd.read_csv('data/results/senti_with_axis.csv')
-    freqs_df = pd.read_csv('data/results/freqs.csv')
+    senti_df = pd.read_csv('results/senti_with_axis.csv')
+    freqs_df = pd.read_csv('results/freqs.csv')
     normalized = []
     for index, row in senti_df.iterrows():
         kw = row['word']
@@ -257,7 +257,7 @@ def normalize_with_axis_senti_and_save_to_csv():
 
 
 def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
-    senti_df = pd.read_csv('data/results/senti.csv')
+    senti_df = pd.read_csv('results/senti.csv')
     expected_senti_keys = []
     senti_mean = []
     senti_max = []
@@ -290,7 +290,6 @@ def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
         # create slice for neutral values, ensuring no gaps
         # and unite all slices to one nested list in ascending order
         if first_slices_combined[0][0] < 0:
-            # TODO: update generation of neutral slice by combining two smaller arrays!
             neutral_slice = [[neutral_slice_first_half[0] - 0.0001, 0.0, -neutral_slice_first_half[0] + 0.0001]]
             slices = first_slices_combined + neutral_slice + second_slices
         elif second_slices[0][0] < 0:
@@ -313,10 +312,10 @@ def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
 
 def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
     # prepare output
-    output_file_path = 'data/results/mean_senti.csv'
+    output_file_path = 'results/mean_senti.csv'
     utils.write_info_to_csv(output_file_path, ['word', 'mean_senti', 'rank'])
     # iterate senti.csv
-    df = pd.read_csv('data/results/senti.csv')
+    df = pd.read_csv('results/senti.csv')
     keywords = list(set(df['word'].tolist()))
     # for each kw, get senti and mean
     results = [{'word': kw, 'mean_senti': np.mean(np.array(df[(df['word'] == kw) & (df['sentiword_set'] == sentiword_set)]
@@ -333,7 +332,7 @@ def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
 
 def calculate_mean_sentiment_over_all_keywords(sentiword_set="combination"):
     # iterate senti.csv
-    df = pd.read_csv('data/results/senti.csv')
+    df = pd.read_csv('results/senti.csv')
     senti_df = df[df['sentiword_set'] == sentiword_set]
     epochs_df = pd.read_csv('data/epochs.csv')
     epochs = epochs_df['written_form_short'].tolist()
@@ -343,7 +342,7 @@ def calculate_mean_sentiment_over_all_keywords(sentiword_set="combination"):
 
 
 def get_senti_minima_for_epochs(sentiword_set='combination'):
-    df = pd.read_csv('data/results/senti.csv')
+    df = pd.read_csv('results/senti.csv')
     filtered_df = df[df['sentiword_set'] == sentiword_set]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
@@ -387,7 +386,7 @@ def save_nearest_neighbors(aligned=False):
     for no in range(1, 11):
         words_similarities_headings.append(f'Word_{no}')
         words_similarities_headings.append(f'Similarity_{no}')
-    save_file_path = f'data/results/nearest_neighbors{"_aligned" if aligned else ""}.csv'
+    save_file_path = f'results/nearest_neighbors{"_aligned" if aligned else ""}.csv'
     utils.write_info_to_csv(save_file_path, ['Keyword', 'Epoch'] + words_similarities_headings)
     # iterate keywords
     for kw in keywords:
@@ -453,14 +452,14 @@ def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mo
 
 def calculate_sum_nearest_neighbors(aligned=False):
     # prepare output
-    out_path = 'data/results/aggregated_nearest_neighbors.csv'
+    out_path = 'results/aggregated_nearest_neighbors.csv'
     words_similarities_headings = []
     for no in range(1, 21):
         words_similarities_headings.append(f'Word_{no}')
         words_similarities_headings.append(f'Similarity_{no}')
     utils.write_info_to_csv(out_path, ['Keyword'] + words_similarities_headings)
     # read data
-    df = pd.read_csv(f'data/results/nearest_neighbors{"_aligned" if aligned else ""}.csv')
+    df = pd.read_csv(f'results/nearest_neighbors{"_aligned" if aligned else ""}.csv')
     # for each keyword:
     keywords = set(df['Keyword'].tolist())
     for kw in keywords:
@@ -491,7 +490,7 @@ def calculate_cosine_development_for_each_keyword():
     keywords = df['keyword'].tolist()
     epochs_df = pd.read_csv('data/epochs.csv')
     # prepare output csv
-    output_csv_path = 'data/results/cosine_developments.csv'
+    output_csv_path = 'results/cosine_developments.csv'
     utils.write_info_to_csv(output_csv_path, ['keyword', 'first_epoch', 'next_epoch', 'epoch_range_str', 'distance'])
     # depending on occurrences, get necessary models/epochs
     for kw in keywords:

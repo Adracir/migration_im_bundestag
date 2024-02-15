@@ -32,9 +32,8 @@ if __name__ == '__main__':
         visualizations.plot_frequencies(relative=relative)'''
     '''visualizations.plot_comparing_frequencies()'''
     # calculate and plot mean frequencies
-    '''experiment.calculate_mean_frequency_over_all_epochs()'''
-    '''visualizations.plot_mean_frequencies_as_bar_plot()'''
-    visualizations.plot_mean_frequencies_over_epochs_as_bar_plot()
+    '''experiment.calculate_mean_frequency_over_all_epochs()
+    visualizations.plot_mean_frequencies_as_bar_plot()'''
     '''visualizations.plot_frequency_maxima_for_epochs_as_bar_plot()'''
     # use preprocessed text to train and save cbow models
     '''for epoch_id in range(1, 9):
@@ -79,7 +78,7 @@ if __name__ == '__main__':
     embeddings.align_two_models(7, 8, 6)'''
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
-    # TODO: compare nearest neighbors from plot with those from csvs
+    # TODO: compare nearest neighbors from plot with those from csv files
     '''visualizations.plot_tsne_according_to_occurrences(words=['Fremdarbeit'], k=10, perplexity=5, keep_doubles=False, iter=3000)'''
     # aggregate nearest neighbors of all time in word cloud
     '''experiment.calculate_sum_nearest_neighbors()'''
