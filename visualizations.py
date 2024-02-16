@@ -609,11 +609,11 @@ def label_point(x, y, val, type, sim, ax):
 
 
 # Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
-def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, mode_gensim=True, keep_doubles=False, iter=1000):
+def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, keep_doubles=False, iter=1000):
     # plot target word across all timeslices
     print("\nPlotting target word...")
     print("Target word: ", target_word)
-    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim, k, keep_doubles)
+    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, k, keep_doubles)
     words_to_plot = list(target_vectors.keys())
     len_words = len(words_to_plot)
     if len_words > 2:
@@ -664,7 +664,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         plt.close()
 
 
-def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, mode_gensim=True, keep_doubles=True, iter=1000):
+def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, keep_doubles=True, iter=1000):
     # iterate rows in keywords_merged.csv
     df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
@@ -685,7 +685,7 @@ def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, mode_ge
                             final_k = 8
                     else:
                         final_k = k
-                    plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, final_k, perplexity, mode_gensim, keep_doubles, iter)
+                    plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, final_k, perplexity, keep_doubles, iter)
             else:
                 print(f"ERROR! Folder {aligned_base_folder} does not exist. "
                       f"Please re-do alignment and/or check your folder structure!")
@@ -781,7 +781,7 @@ def plot_cosine_developments_nearest_neighbors_heatmap():
         heatmap_data = np.array(all_similarities).transpose()
         plt.imshow(heatmap_data, cmap='OrRd', aspect='auto')
         plt.colorbar(label='Cosine Similarity')
-        written_epochs = [epoch_df[epoch_df['epoch_id'] == epoch]['written_form_short'].iloc[0] for epoch in epochs]
+        written_epochs = [utils.get_epoch_written_form_short(epoch) for epoch in epochs]
         # plot grid
         for i in range(len(heatmap_data) + 1):
             plt.axhline(i - 0.5, color='grey', linewidth=0.8)

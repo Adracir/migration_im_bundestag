@@ -50,8 +50,8 @@ if __name__ == '__main__':
         word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')
         print(f'epoch: {epoch_id}, vocabsize: {len(word_vectors)}')'''
     # analyse sentiment of words
-    '''for sentiword_set in ['', 'political', 'combination']:
-        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)'''
+    '''for sentiword_set in ['', 'political', 'combination']:'''
+    '''experiment.analyse_senti_valuation_of_keywords(sentiword_set='combination')'''
     # append expected.csv with written form to enable plotting
     '''experiment.include_written_form_in_expected_csv(method='senti')'''
     # save senti slices of senti results for plots

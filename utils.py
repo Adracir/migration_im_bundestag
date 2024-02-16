@@ -1,18 +1,21 @@
 import pickle
 import csv
-from gensim.models import KeyedVectors
-from gensim import matutils
-from numpy import dot
 import pandas as pd
 
 
-def make_pickle(file_name, data):
-    with open(file_name, "wb") as fp:  # Pickling
+def make_pickle(filepath, data):
+    """
+    take data and store it at the given file path (with pickle)
+    """
+    with open(filepath, "wb") as fp:  # Pickling
         pickle.dump(data, fp)
 
 
-def unpickle(file_name):
-    with open(file_name, "rb") as fp:  # Unpickling
+def unpickle(filepath):
+    """
+    get stored data at given filepath (saved with pickle)
+    """
+    with open(filepath, "rb") as fp:  # Unpickling
         unpickled = pickle.load(fp)
     return unpickled
 
@@ -30,22 +33,20 @@ def write_info_to_csv(output_file_path, arr, mode='w', encoding='utf-8'):
         writer.writerow(arr)
 
 
-def load_model(name):
-    return KeyedVectors.load(f"data/models/{name}")
-
-
 def load_keywords():
+    """
+    helper method to quickly load keywords for the experiment
+    :return: all keywords from keywords_merged.csv as a list
+    """
     df = pd.read_csv('data/keywords_merged.csv')
     return df['keyword'].tolist()
 
 
-def similarity(wv1, wv2):
-    return dot(matutils.unitvec(wv1), matutils.unitvec(wv2))
-
-
 def get_epoch_written_form_short(epoch_id):
+    """
+    fetch short written form of epoch
+    :param epoch_id: number signifying an historical epoch defined in epochs.csv
+    :return: short written form for epoch, e.g. '1950er'
+    """
     epochs_df = pd.read_csv('data/epochs.csv')
-    epochs = epochs_df['epoch_id'].tolist()
-    written_forms = epochs_df['written_form_short'].tolist()
-    i = epochs.index(epoch_id)
-    return written_forms[i]
+    return epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]

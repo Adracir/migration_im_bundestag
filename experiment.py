@@ -1,17 +1,10 @@
 import os.path
 
 import utils
-import itertools
-import time
 from collections import Counter
 from gensim.models import KeyedVectors
 import pandas as pd
 import numpy as np
-import math
-
-from scipy.spatial.distance import cosine
-
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 def prepared_corpus_to_wordlist(corpus_name):
@@ -129,26 +122,15 @@ def calculate_mean_frequency_over_all_epochs():
         utils.write_info_to_csv(output_file_path, [elem['keyword'], elem['mean_freq'], elem['rank']], mode='a')
 
 
-def calculate_mean_frequency_over_all_keywords():
-    # iterate freqs.csv
-    df = pd.read_csv('results/freqs.csv')
-    epochs_df = pd.read_csv('data/epochs.csv')
-    epochs = epochs_df['written_form_short'].tolist()
-    # for each kw, get mean pMW (excluding 0 values)
-    results = [{'epoch': epoch, 'mean_freq': np.mean(np.array(df[(df['epoch'] == epochs.index(epoch) + 1) & (df['pMW'] != 0)]['pMW'].tolist()))} for epoch in epochs]
-    return results
-
-
 def get_freq_maxima_for_epochs():
     df = pd.read_csv('results/freqs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
-    epochs_df = pd.read_csv('data/epochs.csv')
     keywords = keywords_df['keyword'].tolist()
     indices = []
     # iterate keywords
     for kw in keywords:
         kw_df = df[df['keyword'] == kw]
-        # if not all pMW values are the same
+        # if not all pMW values are the same (otherwise, finding the maximum would not be meaningful)
         if kw_df['pMW'].nunique() > 1:
             # find index of maximum freq (per million words)
             index_of_max_freq = kw_df['pMW'].idxmax()
@@ -166,7 +148,7 @@ def get_freq_maxima_for_epochs():
     # return maxima count
     max_count_dict = reduced_df.groupby('epoch').size().to_dict()
     for epoch_id in range(1, 9):
-        epoch_name = epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]
+        epoch_name = utils.get_epoch_written_form_short(epoch_id)
         max_count_dict[epoch_id] = {'count': max_count_dict.get(epoch_id, 0), 'name': epoch_name}
     return dict(sorted(max_count_dict.items()))
 
@@ -196,6 +178,7 @@ def senti_with_axis(w, A, B, wordvectors):
     return polarity_score
 
 
+# TODO: alles zu with_axis rausnehmen?
 def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
     print("preparing sentiment analysis")
     # load keywords
@@ -330,28 +313,16 @@ def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
         utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_senti'], elem['rank']], mode='a')
 
 
-def calculate_mean_sentiment_over_all_keywords(sentiword_set="combination"):
-    # iterate senti.csv
-    df = pd.read_csv('results/senti.csv')
-    senti_df = df[df['sentiword_set'] == sentiword_set]
-    epochs_df = pd.read_csv('data/epochs.csv')
-    epochs = epochs_df['written_form_short'].tolist()
-    # for each kw, get pMW and mean
-    results = [{'epoch': epoch, 'mean_senti': np.mean(np.array(df[df['epoch'] == epochs.index(epoch) + 1]['value'].tolist()))} for epoch in epochs]
-    return results
-
-
 def get_senti_minima_for_epochs(sentiword_set='combination'):
     df = pd.read_csv('results/senti.csv')
     filtered_df = df[df['sentiword_set'] == sentiword_set]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
-    epochs_df = pd.read_csv('data/epochs.csv')
     keywords = keywords_df['keyword'].tolist()
     indices = []
     # iterate keywords
     for kw in keywords:
         kw_df = filtered_df[filtered_df['word'] == kw]
-        # if not all values are the same
+        # if not all values are the same (then finding the minimum would not make sense)
         if kw_df['value'].nunique() > 1:
             # find index and save of minimum value
             index_of_min_senti = kw_df['value'].idxmin()
@@ -369,7 +340,7 @@ def get_senti_minima_for_epochs(sentiword_set='combination'):
     # return minima count
     min_count_dict = reduced_df.groupby('epoch').size().to_dict()
     for epoch_id in range(1, 9):
-        epoch_name = epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]
+        epoch_name = utils.get_epoch_written_form_short(epoch_id)
         min_count_dict[epoch_id] = {'count': min_count_dict[epoch_id], 'name': epoch_name}
     return min_count_dict
 
@@ -413,8 +384,7 @@ def save_nearest_neighbors(aligned=False):
                 print(f"Keyerror: Key '{kw}' not present in vocabulary for epoch {epoch}")
 
 
-# TODO: maybe remove sklearn.cosine_similarity! Then scikit-learn can be left out
-def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mode_gensim=True, k=15, keep_doubles=False):
+def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, k=15, keep_doubles=False):
     target_vectors = {}
     for epoch in epochs:
         epoch_written = utils.get_epoch_written_form_short(epoch)
@@ -426,13 +396,7 @@ def prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, mo
         target_vectors[target_word_year] = {}
         target_vectors[target_word_year]['vector'] = word_vectors[target_word]
         target_vectors[target_word_year]['type'] = 'target_word'
-        if mode_gensim:
-            word_sim = word_vectors.most_similar(positive=target_word, topn=k)
-        else:
-            target_word_vec = [word_vectors[target_word]]
-            vocab_sim = [cosine_similarity(target_word_vec, [word_vectors[vocab_word]]) for vocab_word in vocab if
-                         vocab_word != target_word]
-            word_sim = [(w, s) for s, w in sorted(zip(vocab_sim, vocab), reverse=True)][:k]
+        word_sim = word_vectors.most_similar(positive=target_word, topn=k)
         for ws in word_sim:
             if keep_doubles:
                 ws_key = f'{ws[0]}_{epoch_written}'
@@ -482,37 +446,6 @@ def calculate_sum_nearest_neighbors(aligned=False):
         output_list = [item for sublist in ([word['word'], word['similarity']] for word in sorted_neighbors[:20]) for item in sublist]
         # for each key word save the 20 nearest neighbors of all epochs with resp. similarities
         utils.write_info_to_csv(out_path, [kw] + output_list, 'a')
-
-
-def calculate_cosine_development_for_each_keyword():
-    # load keywords and epochs
-    df = pd.read_csv('data/keywords_merged.csv')
-    keywords = df['keyword'].tolist()
-    epochs_df = pd.read_csv('data/epochs.csv')
-    # prepare output csv
-    output_csv_path = 'results/cosine_developments.csv'
-    utils.write_info_to_csv(output_csv_path, ['keyword', 'first_epoch', 'next_epoch', 'epoch_range_str', 'distance'])
-    # depending on occurrences, get necessary models/epochs
-    for kw in keywords:
-        row = df[df['keyword'] == kw].iloc[0]
-        necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
-        aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
-        # iterate the epochs/models, always taking two neighboring ones at once
-        for epoch in necessary_epochs:
-            if epoch == necessary_epochs[-1]:
-                continue
-            else:
-                next_epoch = necessary_epochs[necessary_epochs.index(epoch)+1]
-                wordvectors1 = KeyedVectors.load(f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.wordvectors')
-                wordvectors2 = KeyedVectors.load(f'{aligned_base_folder}/epoch{next_epoch}_lemma_200d_7w_cbow_aligned.wordvectors')
-                # get distance and save into csv
-                vector1 = wordvectors1[kw]
-                vector2 = wordvectors2[kw]
-                dist = cosine(vector1, vector2)
-                epoch_row = epochs_df[epochs_df['epoch_id'] == epoch].iloc[0]
-                next_epoch_row = epochs_df[epochs_df['epoch_id'] == next_epoch].iloc[0]
-                epoch_range_str = f'{epoch_row.written_form_short} bis {next_epoch_row.written_form_short}'
-                utils.write_info_to_csv(output_csv_path, [kw, epoch, next_epoch, epoch_range_str, dist], mode='a')
 
 
 def calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs):
