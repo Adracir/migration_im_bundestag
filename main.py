@@ -32,8 +32,7 @@ if __name__ == '__main__':
         visualizations.plot_frequencies(relative=relative)'''
     '''visualizations.plot_comparing_frequencies()'''
     # calculate and plot mean frequencies
-    '''experiment.calculate_mean_frequency_over_all_epochs()
-    visualizations.plot_mean_frequencies_as_bar_plot()'''
+    '''visualizations.plot_mean_frequencies_for_keywords_as_bar_plot()'''
     '''visualizations.plot_frequency_maxima_for_epochs_as_bar_plot()'''
     # use preprocessed text to train and save cbow models
     '''for epoch_id in range(1, 9):
@@ -60,8 +59,7 @@ if __name__ == '__main__':
     '''visualizations.plot_sentiments(['combination'], include_expected=True, show_result_groups=True)
     visualizations.plot_comparing_sentiments()'''
     # calculate and plot mean sentiment over all time
-    '''experiment.calculate_mean_sentiment_over_all_epochs()'''
-    '''visualizations.plot_mean_sentiments_as_bar_plot()'''
+    '''visualizations.plot_mean_sentiments_for_keywords_as_bar_plot()'''
     '''visualizations.plot_mean_senti_over_epochs_as_bar_plot()'''
     '''visualizations.plot_senti_minima_for_epochs_as_bar_plot()'''
     # save nearest neighbors without alignment
@@ -79,10 +77,7 @@ if __name__ == '__main__':
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: compare nearest neighbors from plot with those from csv files
-    '''visualizations.plot_tsne_according_to_occurrences(words=['Fremdarbeit'], k=10, perplexity=5, keep_doubles=False, iter=3000)'''
-    # aggregate nearest neighbors of all time in word cloud
-    '''experiment.calculate_sum_nearest_neighbors()'''
-    '''visualizations.plot_nearest_neighbors_as_word_clouds()'''
+    visualizations.plot_tsne_according_to_occurrences(words=['Asylant'], k=8, perplexity=5, keep_doubles=False, iterations=1000)
     # save distance for each keyword between the aligned epochs
     '''experiment.calculate_cosine_development_for_each_keyword()'''
     # plot these distances
@@ -90,4 +85,4 @@ if __name__ == '__main__':
     # plot similarities between certain groups of words over the years
     '''visualizations.plot_cosine_developments_of_word_groups()'''
     # plot development of unaligned nearest neighbors with heatmap (prerequisite: calculate sum)
-    '''visualizations.plot_cosine_developments_nearest_neighbors_heatmap()'''
+    '''visualizations.plot_nearest_neighbors_heatmap()'''

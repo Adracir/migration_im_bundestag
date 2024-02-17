@@ -103,10 +103,6 @@ def create_kw_occurrences_and_merge_to_keyword_list():
 
 
 def calculate_mean_frequency_over_all_epochs():
-    # TODO: maybe don't write to csv but read it from visualizations method
-    # prepare output
-    output_file_path = 'results/mean_freqs.csv'
-    utils.write_info_to_csv(output_file_path, ['keyword', 'mean_freq', 'rank'])
     # iterate freqs.csv
     df = pd.read_csv('results/freqs.csv')
     keywords = list(set(df['keyword'].tolist()))
@@ -117,9 +113,7 @@ def calculate_mean_frequency_over_all_epochs():
     # Create a new array with ranks
     for i, idx in enumerate(sorted_indices):
         results[idx]['rank'] = i + 1
-    # save in new df/csv
-    for elem in results:
-        utils.write_info_to_csv(output_file_path, [elem['keyword'], elem['mean_freq'], elem['rank']], mode='a')
+    return sorted(results, key=lambda x: x['rank'], reverse=True)
 
 
 def get_freq_maxima_for_epochs():
@@ -294,9 +288,6 @@ def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
 
 
 def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
-    # prepare output
-    output_file_path = 'results/mean_senti.csv'
-    utils.write_info_to_csv(output_file_path, ['word', 'mean_senti', 'rank'])
     # iterate senti.csv
     df = pd.read_csv('results/senti.csv')
     keywords = list(set(df['word'].tolist()))
@@ -308,9 +299,7 @@ def calculate_mean_sentiment_over_all_epochs(sentiword_set="combination"):
     # Create a new array with ranks
     for i, idx in enumerate(sorted_indices):
         results[idx]['rank'] = i + 1
-    # save in new df/csv
-    for elem in results:
-        utils.write_info_to_csv(output_file_path, [elem['word'], elem['mean_senti'], elem['rank']], mode='a')
+    return sorted(results, key=lambda x: x['rank'], reverse=True)
 
 
 def get_senti_minima_for_epochs(sentiword_set='combination'):

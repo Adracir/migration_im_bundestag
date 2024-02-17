@@ -1,6 +1,5 @@
 import experiment
 import utils
-from gensim.models import KeyedVectors
 from sklearn.manifold import TSNE  # needed to be installed
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,62 +8,12 @@ import seaborn as sns  # needed to be installed
 from matplotlib import collections as mc
 import os
 import math
-from wordcloud import WordCloud
-
-
-# Helper methods  # TODO: move to utils?
-def skip_some_vals(x, y, val_to_skip=1000):
-    x_segments = []
-    y_segments = []
-    current_segment_x = []
-    current_segment_y = []
-    for xi, yi in zip(x, y):
-        if yi != val_to_skip:
-            current_segment_x.append(xi)
-            current_segment_y.append(yi)
-        else:
-            if current_segment_x:
-                x_segments.append(current_segment_x)
-                y_segments.append(current_segment_y)
-            current_segment_x = []
-            current_segment_y = []
-    if current_segment_x:
-        x_segments.append(current_segment_x)
-        y_segments.append(current_segment_y)
-    return [x_segments, y_segments]
-
-
-def transform_expected_freqs_values(all_freqs, relevant_expected_values, relative):
-    transformed_values = []
-    if relative:
-        max_freqs = max(all_freqs)
-        step_size = max_freqs/8
-        for val in relevant_expected_values:
-            transformed_values.append(val if val == 1000 else step_size * val)
-    else:
-        # get slice values for expected values from csv
-        slice_info_df = pd.read_csv('results/expected_freq_results_slices.csv')
-        for val in relevant_expected_values:
-            transformed_values.append(val if val == 1000 or val == 0 else
-                                      slice_info_df[slice_info_df['expected_freq_key'] == val][
-                                          'pMW_mean'].iloc[0])
-    return transformed_values
-
-
-def transform_expected_senti_values(expected_values, sentiword_set):
-    transformed_values = []
-    slice_info_df = pd.read_csv('results/expected_senti_results_slices.csv')
-    for val in expected_values:
-        transformed_values.append(val if val == 1000 else
-                                  slice_info_df[(slice_info_df['expected_senti_key'] == val) &
-                                                (slice_info_df['sentiword_set'] == sentiword_set)]['senti_mean'].iloc[0])
-    return transformed_values
 
 
 # Frequency methods
 def plot_frequencies(include_expected=True, relative=False, show_result_groups=True):
     """
-    plot frequency values that have been calculated and saved in csv in experiment.save_frequency_info_in_csv
+    plot frequency values that have been calculated and saved in csv with experiment.save_frequency_info_in_csv
     :param include_expected: True if the expected values should be plotted as a reference
     :param relative: True if expected values should be plotted as relative to the values of the word only,
     False if all frequency values (grouped into 8 slices) should be taken as a reference
@@ -76,10 +25,8 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
     freqs_df = pd.read_csv('results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
-    # keywords_df = pd.read_csv('data/keywords2.csv')
     if include_expected:
         expected_df = pd.read_csv('data/expected_values.csv')
-    # keywords = utils.load_keywords()
     keywords = keywords_df['keyword'].tolist()
     combine_groups = keywords_df['combine_group'].tolist()
     ignoring = keywords_df['ignore'].tolist()
@@ -89,7 +36,7 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
     indices_done = []
     for i in range(len(keywords)):
         combine_group = combine_groups[i]
-        # case 1: word has already been plotted
+        # case 1: word has already been plotted or should be ignored
         if i in indices_done or ignoring[i]:
             continue
         # case 2: word does not need to be combined with other spelling and has not been plotted yet
@@ -105,7 +52,9 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
                 # transform values using all existing freqs values
                 transformed_exp_values = transform_expected_freqs_values(freqs, expected_values, relative)
             title = f'Häufigkeiten des Schlagwortes {kw}'
-            path = f'results/plots/frequencies/freq_{kw}{"_res_groups" if show_result_groups else ""}{"_incl_exp" if include_expected else ""}{"_abs_ref" if not relative else ("_rel_ref" if include_expected else "")}_plot.png'
+            path = f'results/plots/frequencies/freq_{kw}{"_res_groups" if show_result_groups else ""}' \
+                   f'{"_incl_exp" if include_expected else ""}' \
+                   f'{"_abs_ref" if not relative else ("_rel_ref" if include_expected else "")}_plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -129,7 +78,8 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
                 transformed_exp_values = transform_expected_freqs_values(freqs, expected_values, relative)
             indices_done.extend(combine_group_indices)
             title = f"Häufigkeiten der Schlagwörter {', '.join(combined_kws)}"
-            path = f"results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}{'_res_groups' if show_result_groups else ''}{'_incl_exp' if include_expected else ''}" \
+            path = f"results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}" \
+                   f"{'_res_groups' if show_result_groups else ''}{'_incl_exp' if include_expected else ''}" \
                    f"{'_abs_ref' if not relative else ('_rel_ref' if include_expected else '')}_plot.png"
         written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
@@ -144,19 +94,21 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.grid(True)
         max_y = max(freqs)
-        # plot a grey area for the expected values
+        # plot a grey line for the expected values
         if include_expected:
-            without_1000_vals = skip_some_vals(x, transformed_exp_values)
+            without_1000_vals = skip_some_expected_vals_for_line_plots(x, transformed_exp_values)
             x_segments = without_1000_vals[0]
             y_segments = without_1000_vals[1]
             max_y = max(max_y, max(y_segments[0]))
             # plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', alpha=0.5, linewidth=70)
             plt.plot(x_segments[0], y_segments[0], color='dimgrey', linestyle='-', linewidth=1,
-                 label=f'erwartete Werte, Referenz: {"alle Häufigkeitswerte" if not relative else "Häufigkeitswerte des Wortes"}')
+                     label=f'erwartete Werte, Referenz: '
+                           f'{"alle Häufigkeitswerte" if not relative else "Häufigkeitswerte des Wortes"}')
             # add labels to points
             if not relative:
                 for a, txt in enumerate(y_segments[0]):
-                    plt.text(x_segments[0][a], y_segments[0][a], f'{written_expected[x_segments[0][a]]}', ha='center', va='top', alpha=0.7)
+                    plt.text(x_segments[0][a], y_segments[0][a], f'{written_expected[x_segments[0][a]]}', ha='center',
+                             va='top', alpha=0.7)
         # plot freqs
         plt.plot(x, freqs, 'r-', label="Häufigkeiten in pMW (pro Million Wörter)")
         # add labels to points
@@ -211,10 +163,12 @@ def plot_comparing_frequencies(show_result_groups=True):
         for w in keywords:
             freqs.append([])
             for epoch in epochs:
-                val = freqs_df_filtered[(freqs_df_filtered['epoch'] == epoch) & (freqs_df_filtered['keyword'] == w)]['pMW'].iloc[0]
+                val = freqs_df_filtered[(freqs_df_filtered['epoch'] == epoch) &
+                                        (freqs_df_filtered['keyword'] == w)]['pMW'].iloc[0]
                 freqs[keywords.index(w)].append(val)
         title = f"Häufigkeiten der Schlagwörter {', '.join(keywords)}"
-        path = f"results/plots/frequencies/freq_compared_{'_'.join(keywords)}{'_res_groups' if show_result_groups else ''}_plot.png"
+        path = f"results/plots/frequencies/freq_compared_{'_'.join(keywords)}" \
+               f"{'_res_groups' if show_result_groups else ''}_plot.png"
         written_forms = epochs_df[epochs_df['epoch_id'].isin(epochs)]['written_form'].tolist()
         # title
         plt.title(title)
@@ -259,39 +213,18 @@ def plot_comparing_frequencies(show_result_groups=True):
         print(f"plot {i} saved")
 
 
-def plot_frequency_distribution_for_corpora_keywords():
-    df = pd.read_csv('results/freqs.csv')
-    for epoch in range(1, 9):
-        # dict = experiment.total_word_frequency_distribution(epoch)
-        epoch_df = df[df['epoch'] == epoch]
-        counts = epoch_df['pMW'].tolist()
-        sorted_counts = sorted(counts, reverse=True)
-        ranks = list(range(1, len(sorted_counts) + 1))
-        plt.figure(figsize=(10, 6))
-        plt.plot(ranks, np.log(sorted_counts), linestyle='-', color='b', alpha=0.5)
-        plt.suptitle(f'Verteilung der Worthäufigkeit der Schlagwörter in Relation zum Rang, Epoche {epoch}', fontsize=16,
-                     fontweight="bold")
-        # plt.title(f'Gesamtgröße des Vokabulars: {len(ranks)} Wörter. X-Achse zur Übersichtlichkeit begrenzt')
-        plt.xlabel('Rang')
-        plt.ylabel('Häufigkeit')
-        plt.grid(True)
-        plt.xlim(0, len(ranks))
-        fig = plt.gcf()
-        fig.savefig(f'data/results/plots/frequencies/keyword_distribution_epoch{epoch}_log.png')
-        plt.close(fig)
-        print(f'epoch {epoch} plotted')
-
-
-def plot_mean_frequencies_as_bar_plot():
-    df = pd.read_csv('results/mean_freqs.csv')
-    df = df.sort_values(by=['rank'], ascending=False)
-    words = df['keyword'].tolist()
-    ranks = df['rank'].tolist()
+def plot_mean_frequencies_for_keywords_as_bar_plot():
+    """
+    plot mean frequencies over all epochs for the respective keywords as a bar plot. Gives an overview over the data.
+    :return: (save bar plot in data/results/plots/frequencies)
+    """
+    results = experiment.calculate_mean_frequency_over_all_epochs()
+    words = [entry['keyword'] for entry in results]
+    ranks = [entry['rank'] for entry in results]
     words_with_ranks = [f'{ranks[i]}. {words[i]}' for i in range(len(words))]
-    freqs = df['mean_freq'].tolist()
+    freqs = [entry['mean_freq'] for entry in results]
     # creating the bar plot
-    plt.barh(words_with_ranks, freqs, color='maroon',
-            height=0.5)
+    plt.barh(words_with_ranks, freqs, color='maroon', height=0.5)
     for i in range(len(words_with_ranks)):
         plt.text(freqs[i], i, f'  {math.ceil(freqs[i] * 10) / 10}', va='center')
     plt.ylabel("Schlagwörter")
@@ -300,11 +233,15 @@ def plot_mean_frequencies_as_bar_plot():
     plt.tight_layout()
     fig = plt.gcf()
     fig.set_size_inches(9, 8)
-    fig.savefig('data/results/plots/frequencies/mean_freqs_per_keyword.png')
+    fig.savefig('results/plots/frequencies/mean_freqs_per_keyword.png')
     plt.close(fig)
 
 
 def plot_frequency_maxima_for_epochs_as_bar_plot():
+    """
+    plot count of frequency maxima for each epoch as a bar plot. Gives an overview over the data.
+    :return: (save bar plot in data/results/plots/frequencies)
+    """
     maxima = experiment.get_freq_maxima_for_epochs()
     # creating the bar plot
     plt.bar([entry['name'] for entry in maxima.values()], [entry['count'] for entry in maxima.values()], color='maroon')
@@ -314,7 +251,7 @@ def plot_frequency_maxima_for_epochs_as_bar_plot():
     plt.tight_layout()
     fig = plt.gcf()
     fig.set_size_inches(9, 8)
-    fig.savefig('data/results/plots/frequencies/freqs_maxima_per_epoch.png')
+    fig.savefig('results/plots/frequencies/freqs_maxima_per_epoch.png')
     plt.close(fig)
 
 
@@ -322,12 +259,13 @@ def plot_frequency_maxima_for_epochs_as_bar_plot():
 def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups=True, with_axis=False):
     """
     plot sentiment values that have been calculated and saved in csv in experiment.analyse_senti_valuation_of_keywords
-    :param sentiword_set_arr: one or more of 'political', 'standard' and 'combination' (comprising the mean of the two previous)
+    :param sentiword_set_arr: one or more of 'political', 'standard' and 'combination' (comprising the mean of the two
+    previous)
     :param include_expected: True if the expected values should be plotted as a reference
     :param show_result_groups: True if colors in the background should indicate the groups of values (high/low).
     experiment.make_senti_slices should have been executed as a prerequisite
     :param with_axis: True if the polarity axis method should be used instead of WEAT
-    :return: (save line plots in data/results/plots/senti)
+    :return: (save line plots in results/plots/senti)
     """
     senti_df = pd.read_csv(f'results/senti{"_with_axis" if with_axis else ""}.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
@@ -362,13 +300,16 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                 senti_values.append(senti_values_for_model)
             if include_expected:
                 # get relevant info from expected_values for epochs and kw
-                expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw) & expected_df['epoch'].isin(epochs)]
+                expected_kw_df = expected_df[expected_df['keyword'].str.contains(kw) &
+                                             expected_df['epoch'].isin(epochs)]
                 expected_values = expected_kw_df['expected_senti'].tolist()
                 written_expected = expected_kw_df['written_senti'].tolist()
                 expected_transformed_values = transform_expected_senti_values(expected_values, sentiword_set_arr[0])
             indices_done.append(i)
             title = f'Wertungen des Schlagwortes {kw} anhand {"einer Polaritätsachse" if with_axis else "WEAT"}'
-            path = f'results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_{"with_axis_" if with_axis else "weat_"}{"res_groups_" if show_result_groups else ""}{"incl_exp_" if include_expected else ""}plot.png'
+            path = f'results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_' \
+                   f'{"with_axis_" if with_axis else "weat_"}{"res_groups_" if show_result_groups else ""}' \
+                   f'{"incl_exp_" if include_expected else ""}plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -382,22 +323,26 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                 combined_kw_senti_model_df = combined_kw_df[combined_kw_df['sentiword_set'] == sentiword_set]
                 senti_values_for_model = []
                 for epoch in epochs:
-                    combined_kw_senti_model_epoch_df = combined_kw_senti_model_df[combined_kw_senti_model_df['epoch'] == epoch]
+                    cd_kw_senti_model_ep_df = combined_kw_senti_model_df[combined_kw_senti_model_df['epoch'] == epoch]
                     # get value as mean between all given values
-                    senti_value = np.mean(combined_kw_senti_model_epoch_df['value'].tolist())
+                    senti_value = np.mean(cd_kw_senti_model_ep_df['value'].tolist())
                     senti_values_for_model.append(senti_value)
                 senti_values.append(senti_values_for_model)
             if include_expected:
                 # get relevant info from expected_values for epochs and kw
                 # it is assumed that combined kws are in the same expectation group!
                 # the first sentiword_arr is taken as a reference for the transformed values if they are adapted
-                expected_kw_df = expected_df[expected_df['keyword'].str.contains(combined_kws[0]) & expected_df['epoch'].isin(epochs)]
+                expected_kw_df = expected_df[expected_df['keyword'].str.contains(combined_kws[0]) &
+                                             expected_df['epoch'].isin(epochs)]
                 expected_values = expected_kw_df['expected_senti'].tolist()
                 written_expected = expected_kw_df['written_senti'].tolist()
                 expected_transformed_values = transform_expected_senti_values(expected_values, sentiword_set_arr[0])
             indices_done.extend(combine_group_indices)
-            title = f'Wertungen der Schlagwörter {", ".join(combined_kws)} anhand {"einer Polaritätsachse" if with_axis else "WEAT"}'
-            path = f"results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_{'with_axis_' if with_axis else 'weat_'}{'res_groups_' if show_result_groups else ''}{'incl_exp_' if include_expected else ''}plot.png"
+            title = f'Wertungen der Schlagwörter {", ".join(combined_kws)} anhand ' \
+                    f'{"einer Polaritätsachse" if with_axis else "WEAT"}'
+            path = f"results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_" \
+                   f"{'with_axis_' if with_axis else 'weat_'}{'res_groups_' if show_result_groups else ''}" \
+                   f"{'incl_exp_' if include_expected else ''}plot.png"
         epochs_df = pd.read_csv('data/epochs.csv')
         written_forms = epochs_df.loc[epochs_df['epoch_id'].isin(epochs), 'written_form'].tolist()
         # title
@@ -408,7 +353,8 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
         ax.set_xlim(0, len(epochs))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
-        plt.ylabel('Projektion auf die Polaritätsachse (pos: >0, neg: <0)' if with_axis else 'durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
+        plt.ylabel('Projektion auf die Polaritätsachse (pos: >0, neg: <0)' if with_axis else
+                   'durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.axhline(0, color='black', linewidth=2)
         plt.grid(True)
@@ -416,7 +362,7 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
         max_y = None
         # plot expected values if wanted
         if include_expected:
-            without_1000_vals = skip_some_vals(x, expected_transformed_values)
+            without_1000_vals = skip_some_expected_vals_for_line_plots(x, expected_transformed_values)
             x_segments = without_1000_vals[0]
             y_segments = without_1000_vals[1]
             min_y = min(y_segments[0])
@@ -428,11 +374,14 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                          label='erwartete Werte')
             # add labels to points
             for a, txt in enumerate(y_segments[0]):
-                plt.text(x_segments[0][a], y_segments[0][a], f'{written_expected[x_segments[0][a]]}', ha='center', va='top', alpha=0.7)
+                plt.text(x_segments[0][a], y_segments[0][a], f'{written_expected[x_segments[0][a]]}', ha='center',
+                         va='top', alpha=0.7)
         # plot senti
         colors = ['r', 'b', 'g', 'y', 'm']
         for a in range(0, len(senti_values)):
-            plt.plot(x, senti_values[a], f'{colors[a]}-', label=f'WEAT-Wert nach Ausgangswörtern: {sentiword_set_arr[a] if sentiword_set_arr[a] != "combination" else "political & standard"}')
+            plt.plot(x, senti_values[a], f'{colors[a]}-',
+                     label=f'WEAT-Wert nach Ausgangswörtern: '
+                           f'{sentiword_set_arr[a] if sentiword_set_arr[a] != "combination" else "political & standard"}')
             # add labels to points
             for o, txt in enumerate(senti_values[a]):
                 plt.text(x[o], senti_values[a][o], f'{senti_values[a][o]:.2f}', color=colors[a], ha='center', va='bottom')
@@ -447,12 +396,12 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
             senti_colors = np.concatenate([red_colors, np.array([[1.0, 1.0, 1.0, 1.0]]), green_colors])
             slice_info_df = pd.read_csv('results/expected_senti_results_slices.csv')
             all_exp_df = pd.read_csv('data/expected_senti_translation.csv')
-            slice_info_sentiword_set_df = slice_info_df[slice_info_df['sentiword_set'] == sentiword_set]
-            for senti_key in slice_info_sentiword_set_df['expected_senti_key'].tolist():
-                index = slice_info_sentiword_set_df['expected_senti_key'].tolist().index(senti_key)
-                max_slice = slice_info_sentiword_set_df[slice_info_sentiword_set_df['expected_senti_key'] == senti_key]['senti_max'].iloc[0]
-                min_slice = slice_info_sentiword_set_df[slice_info_sentiword_set_df['expected_senti_key'] == senti_key]['senti_min'].iloc[0]
-                mean_slice = slice_info_sentiword_set_df[slice_info_sentiword_set_df['expected_senti_key'] == senti_key]['senti_mean'].iloc[0]
+            slice_info_sw_set_df = slice_info_df[slice_info_df['sentiword_set'] == sentiword_set]
+            for senti_key in slice_info_sw_set_df['expected_senti_key'].tolist():
+                index = slice_info_sw_set_df['expected_senti_key'].tolist().index(senti_key)
+                max_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_max'].iloc[0]
+                min_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_min'].iloc[0]
+                mean_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_mean'].iloc[0]
                 ax.axhspan(min_slice, max_slice, facecolor=senti_colors[index], alpha=0.35)
                 if min_y <= max_slice or max_y <= max_slice:
                     plt.text(0.1, mean_slice,
@@ -476,7 +425,7 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
     :param sentiword_set: one of 'political', 'standard' and 'combination' (comprising the mean of the two previous)
     :param show_result_groups: True if colors in the background should indicate the groups of values (high/low)
     :param with_axis: True if the polarity axis method should be used instead of WEAT
-    :return: (save line plots in data/results/plots/senti)
+    :return: (save line plots in results/plots/senti)
     """
     filename = f'results/{"senti.csv" if not with_axis else "senti_with_axis.csv"}'
     senti_df = pd.read_csv(filename)
@@ -498,13 +447,15 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
             senti.append([])
             for epoch in epochs:
                 try:
-                    val = senti_df_filtered[(senti_df_filtered['epoch'] == epoch) & (senti_df_filtered['word'] == w)]['value'].iloc[0]
+                    val = senti_df_filtered[(senti_df_filtered['epoch'] == epoch)
+                                            & (senti_df_filtered['word'] == w)]['value'].iloc[0]
                 except IndexError:
                     val = None
                 senti[keywords.index(w)].append(val)
         suptitle = f'Wertungen der Schlagwörter \n{", ".join(keywords)}'
         title = f'anhand {"einer Polaritätsachse" if with_axis else "WEAT"} & {sentiword_set} Wort Set'
-        path = f"results/plots/senti/senti_compared_{'_'.join(keywords)}_{sentiword_set}{'_with_axis' if with_axis else '_weat'}{'_res_groups' if show_result_groups else ''}_plot.png"
+        path = f"results/plots/senti/senti_compared_{'_'.join(keywords)}_{sentiword_set}" \
+               f"{'_with_axis' if with_axis else '_weat'}{'_res_groups' if show_result_groups else ''}_plot.png"
         written_forms = epochs_df[epochs_df['epoch_id'].isin(epochs)]['written_form'].tolist()
         # titles
         plt.suptitle(suptitle, fontsize=16, fontweight="bold")
@@ -515,7 +466,9 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
         ax.set_xlim(0, len(epochs))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
-        plt.ylabel('Projektion auf die Polaritätsachse (pos: >0, neg: <0)' if with_axis else 'durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
+        plt.ylabel('Projektion auf die Polaritätsachse '
+                   '(pos: >0, neg: <0)' if with_axis else 'durchschnittliche Ähnlichkeit mit den Ausgangswörtern '
+                                                          '(pos: >0, neg: <0)')
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.axhline(0, color='black', linewidth=2)
         plt.grid(True)
@@ -557,30 +510,38 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
         print(f"plot {index} saved")
 
 
-def plot_mean_sentiments_as_bar_plot():
-    df = pd.read_csv('results/mean_senti.csv')
-    df = df.sort_values(by=['rank'], ascending=False)
-    words = df['word'].tolist()
-    ranks = df['rank'].tolist()
+def plot_mean_sentiments_for_keywords_as_bar_plot(sentiword_set='combination'):
+    """
+    plot mean sentiment values over all epochs for the respective keywords as a bar plot. Gives an overview over the data.
+    :return: (save bar plot in data/results/plots/senti)
+    """
+    results = experiment.calculate_mean_sentiment_over_all_epochs(sentiword_set)
+    words = [entry['word'] for entry in results]
+    ranks = [entry['rank'] for entry in results]
     words_with_ranks = [f'{ranks[i]}. {words[i]}' for i in range(len(words))]
-    sentis = df['mean_senti'].tolist()
+    sentis = [entry['mean_senti'] for entry in results]
     # creating the bar plot
-    plt.barh(words_with_ranks, sentis, color='maroon',
-            height=0.5)
+    plt.barh(words_with_ranks, sentis, color='maroon', height=0.5)
     for i in range(len(words_with_ranks)):
-        plt.text(sentis[i], i, f'  {math.ceil(sentis[i] * 1000) / 1000}', va='center', color=f'{"black" if ranks[i] < 4 else "white"}')
+        plt.text(sentis[i], i, f'  {math.ceil(sentis[i] * 1000) / 1000}', va='center',
+                 color=f'{"black" if ranks[i] < 4 else "white"}')
     plt.axvline(0, color='black', linewidth=2)
     plt.ylabel("Schlagwörter")
-    plt.xlabel("Durchschnittlicher WEAT-Wert, politisch + sentiment")
+    plt.xlabel(f"Durchschnittlicher WEAT-Wert, "
+               f"{'Kombination: politisch + sentiment' if sentiword_set == 'combination' else ('politisch' if sentiword_set == 'political' else 'sentiment')}")
     plt.title("Durchschnittliche Wertungen der Schlagwörter über alle Epochen, \n1949-2023")
     plt.tight_layout()
     fig = plt.gcf()
     fig.set_size_inches(9, 8)
-    fig.savefig('data/results/plots/senti/mean_senti_per_keyword.png')
+    fig.savefig('results/plots/senti/mean_senti_per_keyword.png')
     plt.close(fig)
 
 
 def plot_senti_minima_for_epochs_as_bar_plot():
+    """
+    plot count of sentiment minima for each epoch as a bar plot. Gives an overview over the data.
+    :return: (save bar plot in data/results/plots/senti)
+    """
     minima = experiment.get_senti_minima_for_epochs()
     # creating the bar plot
     plt.bar([entry['name'] for entry in minima.values()], [entry['count'] for entry in minima.values()], color='maroon')
@@ -590,30 +551,73 @@ def plot_senti_minima_for_epochs_as_bar_plot():
     plt.tight_layout()
     fig = plt.gcf()
     fig.set_size_inches(9, 8)
-    fig.savefig('data/results/plots/senti/senti_minima_per_epoch.png')
+    fig.savefig('results/plots/senti/senti_minima_per_epoch.png')
     plt.close(fig)
 
 
 # Word Associations
-# Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
-# label points with words
-def label_point(x, y, val, type, sim, ax):
-    a = pd.concat({'x': x, 'y': y, 'type': type, 'sim': sim, 'val': val}, axis=1)
-    for i, point in a.iterrows():
-        font_size = 16 if point['type'] == 'target_word' else (15 if point['sim'] > 0.79 else (14 if point['sim'] > 0.69
-                                                                                               else (13 if point['sim'] > 0.59
-                                                                                                     else 12)))
-        weight = 'semibold' if point['type'] == 'target_word' else 'normal'
-        ax.text(point['x'] + .02, point['y'] - .02 if i % 2 == 0 else point['y'], str(point['val']), size=font_size,
-                    weight=weight)
+def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, keep_doubles=True, iterations=1000):
+    """
+    define the parameters and automatically initiate the creation of tsne plots for the given keywords
+    :param words: either 'all' or an array containing the keywords to be plotted
+    :param k: amount of nearest neighbors to be shown per epoch, or 'flex', adapting it to the amount of data
+    :param perplexity: parameter for the tsne-algorithm
+    :param keep_doubles: boolean value whether a word should be shown if it was already shown for another epoch.
+    default False, to avoid plots that are too crowded with words
+    :param iterations: parameter for the tsne-algorithm
+    :return: (save plots to results/plots/word_associations/tsne)
+    """
+    # iterate rows in keywords_merged.csv
+    df = pd.read_csv('data/keywords_merged.csv')
+    for index, row in df.iterrows():
+        # if word never occurs, ignore
+        if row.first_occ_epoch != 0 and (words == 'all' or row.keyword in words):
+            # check if resp. start_epoch-folder exists
+            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}' \
+                                  f'{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+            if os.path.isdir(aligned_base_folder):
+                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1)
+                                    if str(item) not in row.loophole]
+                # plot words with more than one epoch only
+                if len(necessary_epochs) > 1:
+                    # show more or less words depending on the amount of epochs
+                    if k == 'flex':
+                        if len(necessary_epochs) <= 3:
+                            final_k = 18
+                        elif 6 > len(necessary_epochs) > 3:
+                            final_k = 12
+                        else:
+                            final_k = 8
+                    else:
+                        final_k = k
+                    plot_nearest_neighbors_tsne(necessary_epochs, row.keyword, aligned_base_folder, final_k, perplexity,
+                                                keep_doubles, iterations)
+            else:
+                print(f"ERROR! Folder {aligned_base_folder} does not exist. "
+                      f"Please re-do alignment and/or check your folder structure!")
 
 
-# Code copied from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
-def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, keep_doubles=False, iter=1000):
+# Code adapted from https://github.com/ezosa/Diachronic-Embeddings/blob/master/embeddings_drift_tsne.py
+# (plot_nearest_neighbors_tsne)
+def plot_nearest_neighbors_tsne(epochs, target_word, aligned_base_folder, k=15, perplexity=30, keep_doubles=False,
+                                iterations=1000):
+    """
+    plot cosine-most-similar words to a keyword for each epoch in a tsne plot (using aligned models only)
+    :param epochs: time epochs that should be included, numbers from 1 to 8
+    :param target_word: keyword that should be analyzed
+    :param aligned_base_folder: which folder the aligned models needed for this plot are in
+    :param k: amount of nearest neighbors to be shown per epoch
+    :param perplexity: parameter for the tsne-algorithm
+    :param keep_doubles: boolean value whether a word should be shown if it was already shown for another epoch.
+    default False, to avoid plots that are too crowded with words
+    :param iterations: parameter for the tsne-algorithm
+    :return: (save plot to results/plots/word_associations/tsne)
+    """
     # plot target word across all timeslices
     print("\nPlotting target word...")
     print("Target word: ", target_word)
-    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, k, keep_doubles)
+    target_vectors = experiment.prepare_target_vectors_for_tsne(epochs, target_word, aligned_base_folder, k,
+                                                                keep_doubles)
     words_to_plot = list(target_vectors.keys())
     len_words = len(words_to_plot)
     if len_words > 2:
@@ -624,7 +628,7 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         sims = [target_vectors[w]['sim'] if 'sim' in target_vectors[w] else 100.0 for w in words_to_plot]
         df = {'words': words_to_plot, 'type': word_types, 'sim': sims}
         df = pd.DataFrame.from_dict(df)
-        tsne = TSNE(n_components=2, verbose=1, perplexity=perplexity, n_iter=iter, learning_rate=100.0)
+        tsne = TSNE(n_components=2, verbose=1, perplexity=perplexity, n_iter=iterations, learning_rate=100.0)
         tsne_results = tsne.fit_transform(np.array(vectors))
         print('t-SNE done!')
         df['tsne-one'] = tsne_results[:, 0]
@@ -645,7 +649,17 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
             legend='full',
             alpha=1.0
         )
-        label_point(df['tsne-one'], df['tsne-two'], df['words'], df['type'], df['sim'], plt.gca())
+        # label points with words
+        a = pd.concat({'x': df['tsne-one'], 'y': df['tsne-two'], 'type': df['type'], 'sim': df['sim'],
+                       'val': df['words']}, axis=1)
+        for i, point in a.iterrows():
+            font_size = 16 if point['type'] == 'target_word' else (
+                15 if point['sim'] > 0.79 else (14 if point['sim'] > 0.69
+                                                else (13 if point['sim'] > 0.59
+                                                      else 12)))
+            weight = 'semibold' if point['type'] == 'target_word' else 'normal'
+            ax.text(point['x'] + .02, point['y'] - .02 if i % 2 == 0 else point['y'], str(point['val']), size=font_size,
+                    weight=weight)
         # draw lines between target words from different time points
         df_target = df[df['type'] == 'target_word']
         nrows = df_target.shape[0]
@@ -660,38 +674,18 @@ def plot_words_from_time_epochs_tsne(epochs, target_word, aligned_base_folder, k
         lc = mc.LineCollection(lines, linewidths=1)
         ax.add_collection(lc)
         fig = ax.get_figure()
-        fig.savefig(f'data/results/plots/word_associations/tsne/tsne_{target_word}_{"_".join(map(str, epochs))}_perpl{perplexity}_k{k}_{"gensim" if mode_gensim else "sklearn"}{"_doubles" if keep_doubles else ""}_steps_{iter}.png')
+        fig.savefig(f'results/plots/word_associations/tsne/tsne_{target_word}_{"_".join(map(str, epochs))}'
+                    f'_perpl{perplexity}_k{k}{"_doubles" if keep_doubles else ""}_steps_{iterations}.png')
         plt.close()
 
 
-def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, keep_doubles=True, iter=1000):
-    # iterate rows in keywords_merged.csv
-    df = pd.read_csv('data/keywords_merged.csv')
-    for index, row in df.iterrows():
-        # if word never occurs, ignore
-        if row.first_occ_epoch != 0 and (words == 'all' or row.keyword in words):
-            # check if resp. start_epoch-folder exists
-            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
-            if os.path.isdir(aligned_base_folder):
-                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
-                # plot words with more than one epoch only
-                if len(necessary_epochs) > 1:
-                    if k == 'flex':
-                        if len(necessary_epochs) <= 3:
-                            final_k = 18
-                        elif 6 > len(necessary_epochs) > 3:
-                            final_k = 12
-                        else:
-                            final_k = 8
-                    else:
-                        final_k = k
-                    plot_words_from_time_epochs_tsne(necessary_epochs, row.keyword, aligned_base_folder, final_k, perplexity, keep_doubles, iter)
-            else:
-                print(f"ERROR! Folder {aligned_base_folder} does not exist. "
-                      f"Please re-do alignment and/or check your folder structure!")
-
-
 def plot_cosine_developments_of_word_groups(show_result_groups=True):
+    """
+    plot the cosine similarity between the comparing words over time as a line plot.
+    The first word is the one on which the others depend
+    :param show_result_groups: whether to show blue areas in the back for orientation
+    :return: (save plot in results/plots/word_associations_comparing)
+    """
     # retrieve keywords that should be compared
     df = pd.read_csv('data/keyword_comparing.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
@@ -700,7 +694,8 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
     for index, row in df.iterrows():
         # from main word, calculate the similarity for each other word for each epoch
         main_word = row.main_word
-        other_words = [row[column] for column in ['second_word', 'third_word', 'fourth_word', 'fifth_word'] if pd.notna(row[column])]
+        other_words = [row[column] for column in ['second_word', 'third_word', 'fourth_word', 'fifth_word']
+                       if pd.notna(row[column])]
         # get necessary epochs
         kw_row = keywords_df[keywords_df['keyword'] == main_word].iloc[0]
         necessary_epochs = [item for item in range(kw_row.first_occ_epoch, kw_row.last_occ_epoch + 1) if
@@ -708,7 +703,8 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
         results = experiment.calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs)
         # plot as many lines as other words
         title = f'Entwicklung im Verhältnis zum Schlagwort {main_word}'
-        path = f'results/plots/word_associations/comparing/comparing_development_{main_word}_{"_".join(other_words)}_plot.png'
+        path = f'results/plots/word_associations/comparing/comparing_development_{main_word}_' \
+               f'{"_".join(other_words)}_plot.png'
         filtered_epochs_df = epochs_df[epochs_df['epoch_id'].isin(necessary_epochs)]
         written_forms = filtered_epochs_df['written_form'].tolist()
         # title
@@ -735,16 +731,16 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
             # plot blue areas to give a hint on the dimensions
             blue_colors = plt.cm.Blues(np.linspace(0.2, 0.9, 5))
             labels = ['wenig/gar nicht ähnlich', 'geringfügig ähnlich', 'moderat ähnlich', 'ähnlich', 'sehr ähnlich']
-            for index in range(1, 6):
-                max_slice = index * 0.2
-                min_slice = (index - 1) * 0.2 if index != 1 else -0.2
-                mean_slice = np.mean([max_slice, min_slice]) if index != 1 else 0.1
-                ax.axhspan(min_slice, max_slice, facecolor=blue_colors[index - 1], alpha=0.35)
-                # if the slice contains result points, plot its' name to the side
+            for group_index in range(1, 6):
+                max_slice = group_index * 0.2
+                min_slice = (group_index - 1) * 0.2 if group_index != 1 else -0.2
+                mean_slice = np.mean([max_slice, min_slice]) if group_index != 1 else 0.1
+                ax.axhspan(min_slice, max_slice, facecolor=blue_colors[group_index - 1], alpha=0.35)
+                # if the slice contains result points, plot its name to the side
                 if not max_val <= min_slice:
                     plt.text(0.1, mean_slice,
-                             labels[index - 1],
-                             color=blue_colors[index - 1], fontsize=10)
+                             labels[group_index - 1],
+                             color=blue_colors[group_index - 1], fontsize=10)
         ax.set_ylim([-0.025, max_val + 0.025])
         # plot legend
         plt.legend()
@@ -756,11 +752,14 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
         print(f"plot saved")
 
 
-def plot_cosine_developments_nearest_neighbors_heatmap():
+def plot_nearest_neighbors_heatmap():
+    """
+    plot cosine-most-similar words to a keyword in a heatmap (using un-aligned models only)
+    :return: (save to results/plots/word_associations/heatmaps)
+    """
     # retrieve keywords that should be compared
     agg_df = pd.read_csv('results/aggregated_nearest_neighbors.csv')
     df = pd.read_csv('results/nearest_neighbors.csv')
-    epoch_df = pd.read_csv('data/epochs.csv')
     keywords = agg_df['Keyword'].tolist()
     for kw in keywords:
         # retrieve list of similar words
@@ -794,6 +793,76 @@ def plot_cosine_developments_nearest_neighbors_heatmap():
         plt.title(f"Word Similarities Heatmap: {kw}")
         plt.tight_layout()
         fig = plt.gcf()
-        fig.savefig(f'data/results/plots/word_associations/heatmaps/{kw}_heatmap.png')
+        fig.savefig(f'results/plots/word_associations/heatmaps/{kw}_heatmap.png')
         plt.close(fig)
         print(f"plot for kw {kw} saved")
+
+
+# Helper methods
+def skip_some_expected_vals_for_line_plots(x, y, val_to_skip=1000):
+    """
+    handle unavailable values in expected values in order to plot them at the right position in the line plot
+    :param x: x-values including the values that should be skipped, e.g. [1, 2, 3, 4, 5, 6]
+    :param y: y-values including the values that should be skipped, e.g. [1000, 3, 4, 1000, 6, 1000]
+    :param val_to_skip: value that should be skipped, default 1000
+    :return: nested lists for the x and y-values, leaving out the defined values, e.g. x: [[[2, 3], [5]], y: [[3, 4], [6]]]
+    """
+    x_segments = []
+    y_segments = []
+    current_segment_x = []
+    current_segment_y = []
+    for xi, yi in zip(x, y):
+        if yi != val_to_skip:
+            current_segment_x.append(xi)
+            current_segment_y.append(yi)
+        else:
+            if current_segment_x:
+                x_segments.append(current_segment_x)
+                y_segments.append(current_segment_y)
+            current_segment_x = []
+            current_segment_y = []
+    if current_segment_x:
+        x_segments.append(current_segment_x)
+        y_segments.append(current_segment_y)
+    return [x_segments, y_segments]
+
+
+def transform_expected_freqs_values(measured_freqs, relevant_expected_values, relative):
+    """
+    adjust expected frequency values to a range that allows to plot them
+    :param measured_freqs: the measured frequencies for a specific plot/word
+    :param relevant_expected_values: the expected values for a specific plot/word
+    :param relative: if True, transform in relation to the measured freqs, else use prepared slices
+    :return: transformed expected values, ready for plotting
+    """
+    transformed_values = []
+    if relative:
+        # transform values relative to the values measured for the word
+        max_freqs = max(measured_freqs)
+        step_size = max_freqs/8
+        for val in relevant_expected_values:
+            transformed_values.append(val if val == 1000 else step_size * val)
+    else:
+        # get slice values for expected values from csv
+        slice_info_df = pd.read_csv('results/expected_freq_results_slices.csv')
+        for val in relevant_expected_values:
+            transformed_values.append(val if val == 1000 or val == 0 else
+                                      slice_info_df[slice_info_df['expected_freq_key'] == val][
+                                          'pMW_mean'].iloc[0])
+    return transformed_values
+
+
+def transform_expected_senti_values(expected_values, sentiword_set):
+    """
+    adjust expected sentiment values to a range that allows to plot them (according to prepared slices)
+    :param expected_values: the expected values for a specific plot/word
+    :param sentiword_set: either 'standard', 'political' or 'combination'
+    :return: transformed expected values, ready for plotting
+    """
+    transformed_values = []
+    slice_info_df = pd.read_csv('results/expected_senti_results_slices.csv')
+    for val in expected_values:
+        transformed_values.append(val if val == 1000 else
+                                  slice_info_df[(slice_info_df['expected_senti_key'] == val) &
+                                                (slice_info_df['sentiword_set'] == sentiword_set)]['senti_mean'].iloc[0])
+    return transformed_values
