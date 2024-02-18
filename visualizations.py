@@ -256,18 +256,18 @@ def plot_frequency_maxima_for_epochs_as_bar_plot():
 
 
 # Sentiments/Valuation
-def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups=True, with_axis=False):
+def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups=True):
     """
-    plot sentiment values that have been calculated and saved in csv in experiment.analyse_senti_valuation_of_keywords
+    plot WEAT sentiment values that have been calculated and saved in csv in
+    experiment.analyse_senti_valuation_of_keywords
     :param sentiword_set_arr: one or more of 'political', 'standard' and 'combination' (comprising the mean of the two
     previous)
     :param include_expected: True if the expected values should be plotted as a reference
     :param show_result_groups: True if colors in the background should indicate the groups of values (high/low).
     experiment.make_senti_slices should have been executed as a prerequisite
-    :param with_axis: True if the polarity axis method should be used instead of WEAT
     :return: (save line plots in results/plots/senti)
     """
-    senti_df = pd.read_csv(f'results/senti{"_with_axis" if with_axis else ""}.csv')
+    senti_df = pd.read_csv(f'results/senti.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
     # keywords_df = pd.read_csv('data/keywords2.csv')
@@ -306,10 +306,9 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                 written_expected = expected_kw_df['written_senti'].tolist()
                 expected_transformed_values = transform_expected_senti_values(expected_values, sentiword_set_arr[0])
             indices_done.append(i)
-            title = f'Wertungen des Schlagwortes {kw} anhand {"einer Polaritätsachse" if with_axis else "WEAT"}'
+            title = f'Wertungen des Schlagwortes {kw} anhand WEAT'
             path = f'results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_' \
-                   f'{"with_axis_" if with_axis else "weat_"}{"res_groups_" if show_result_groups else ""}' \
-                   f'{"incl_exp_" if include_expected else ""}plot.png'
+                   f'{"res_groups_" if show_result_groups else ""}{"incl_exp_" if include_expected else ""}plot.png'
         # case 3: combine different spellings
         else:
             # find all spellings for word
@@ -338,11 +337,9 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                 written_expected = expected_kw_df['written_senti'].tolist()
                 expected_transformed_values = transform_expected_senti_values(expected_values, sentiword_set_arr[0])
             indices_done.extend(combine_group_indices)
-            title = f'Wertungen der Schlagwörter {", ".join(combined_kws)} anhand ' \
-                    f'{"einer Polaritätsachse" if with_axis else "WEAT"}'
+            title = f'Wertungen der Schlagwörter {", ".join(combined_kws)} anhand WEAT'
             path = f"results/plots/senti/senti_combined_{'_'.join(combined_kws)}_{'_'.join(sentiword_set_arr)}_" \
-                   f"{'with_axis_' if with_axis else 'weat_'}{'res_groups_' if show_result_groups else ''}" \
-                   f"{'incl_exp_' if include_expected else ''}plot.png"
+                   f"{'res_groups_' if show_result_groups else ''}{'incl_exp_' if include_expected else ''}plot.png"
         epochs_df = pd.read_csv('data/epochs.csv')
         written_forms = epochs_df.loc[epochs_df['epoch_id'].isin(epochs), 'written_form'].tolist()
         # title
@@ -353,8 +350,7 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
         ax.set_xlim(0, len(epochs))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
-        plt.ylabel('Projektion auf die Polaritätsachse (pos: >0, neg: <0)' if with_axis else
-                   'durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
+        plt.ylabel('durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.axhline(0, color='black', linewidth=2)
         plt.grid(True)
@@ -369,7 +365,6 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
             max_y = max(y_segments[0])
             # only plots expected values if without_1000_vals contains useful info
             if not all(not sublist for sublist in without_1000_vals):
-                # plt.plot(x_segments[0], y_segments[0], color='gray', linestyle='-', alpha=0.5, linewidth=70)
                 plt.plot(x_segments[0], y_segments[0], color='dimgrey', linestyle='-', linewidth=1,
                          label='erwartete Werte')
             # add labels to points
@@ -418,16 +413,15 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
         print(f"plot {i} saved")
 
 
-def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=True, with_axis=False):
+def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=True):
     """
     plot sentiment values of multiple words to enable comparing them. Values have been calculated and saved in csv in
     experiment.analyse_senti_valuation_of_keywords
     :param sentiword_set: one of 'political', 'standard' and 'combination' (comprising the mean of the two previous)
     :param show_result_groups: True if colors in the background should indicate the groups of values (high/low)
-    :param with_axis: True if the polarity axis method should be used instead of WEAT
     :return: (save line plots in results/plots/senti)
     """
-    filename = f'results/{"senti.csv" if not with_axis else "senti_with_axis.csv"}'
+    filename = 'results/senti.csv'
     senti_df = pd.read_csv(filename)
     senti_model_df = senti_df[senti_df['sentiword_set'] == sentiword_set]
     df = pd.read_csv('data/keyword_comparing.csv')
@@ -453,9 +447,9 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
                     val = None
                 senti[keywords.index(w)].append(val)
         suptitle = f'Wertungen der Schlagwörter \n{", ".join(keywords)}'
-        title = f'anhand {"einer Polaritätsachse" if with_axis else "WEAT"} & {sentiword_set} Wort Set'
+        title = f'anhand WEAT & {sentiword_set} Wort Set'
         path = f"results/plots/senti/senti_compared_{'_'.join(keywords)}_{sentiword_set}" \
-               f"{'_with_axis' if with_axis else '_weat'}{'_res_groups' if show_result_groups else ''}_plot.png"
+               f"_weat{'_res_groups' if show_result_groups else ''}_plot.png"
         written_forms = epochs_df[epochs_df['epoch_id'].isin(epochs)]['written_form'].tolist()
         # titles
         plt.suptitle(suptitle, fontsize=16, fontweight="bold")
@@ -466,9 +460,7 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
         ax.set_xlim(0, len(epochs))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
-        plt.ylabel('Projektion auf die Polaritätsachse '
-                   '(pos: >0, neg: <0)' if with_axis else 'durchschnittliche Ähnlichkeit mit den Ausgangswörtern '
-                                                          '(pos: >0, neg: <0)')
+        plt.ylabel('durchschnittliche Ähnlichkeit mit den Ausgangswörtern (pos: >0, neg: <0)')
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.axhline(0, color='black', linewidth=2)
         plt.grid(True)

@@ -159,21 +159,8 @@ def weat(w, A, B, word_vectors):
     return np.mean(sim_wa) - np.mean(sim_wb)
 
 
-# TODO: make decision: keep these unused methods for transparency and showing how much I did or throwing it away for
-#  the sake of well-organized code?
-def senti_with_axis(w, A, B, wordvectors):
-    # Berechnen Sie den Durchschnittsvektor der positiven und negativen Ausgangswörter
-    positive_vector = sum(wordvectors[word] for word in A if word in wordvectors.index_to_key) / len(A)
-    negative_vector = sum(wordvectors[word] for word in B if word in wordvectors.index_to_key) / len(B)
-    # Berechnen Sie die Achse, die der Polarität entspricht
-    polarity_axis = positive_vector - negative_vector
-    # Berechnen Sie den Polaritätswert für das Zielwort
-    polarity_score = sum(wordvectors[w] * polarity_axis)
-    return polarity_score
-
-
 # TODO: alles zu with_axis rausnehmen?
-def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
+def analyse_senti_valuation_of_keywords(sentiword_set=""):
     print("preparing sentiment analysis")
     # load keywords
     keyword_df = pd.read_csv('data/keywords_merged.csv')
@@ -194,7 +181,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
     pos_words = df_pos["word"].tolist()
     neg_words = df_neg["word"].tolist()
     # prepare output csv
-    output_file_path = f"results/senti{'_with_axis' if with_axis else ''}.csv"
+    output_file_path = "results/senti.csv"
     if not os.path.exists(output_file_path):
         utils.write_info_to_csv(output_file_path, ["word", "epoch", "sentiword_set", "value"])
     # iterate keywords
@@ -208,29 +195,12 @@ def analyse_senti_valuation_of_keywords(sentiword_set="", with_axis=False):
                 word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
                 # only analyze word if it is supposed to be in the vocab
                 if epoch in range(kw_keyword_df['first_occ_epoch'].iloc[0], kw_keyword_df['last_occ_epoch'].iloc[0] + 1) and str(epoch) not in kw_keyword_df['loophole'].iloc[0]:
-                    if with_axis:
-                        senti = senti_with_axis(kw, pos_words, neg_words, word_vectors)
-                    else:
-                        # calculate bias value of word with WEAT method
-                        senti = weat(kw, pos_words, neg_words, word_vectors)
+                    # calculate bias value of word with WEAT method
+                    senti = weat(kw, pos_words, neg_words, word_vectors)
                     # save value in csv
                     utils.write_info_to_csv(output_file_path,
                                             [kw, epoch, sentiword_set if sentiword_set else "standard", senti],
                                             mode="a")
-
-
-def normalize_with_axis_senti_and_save_to_csv():
-    senti_df = pd.read_csv('results/senti_with_axis.csv')
-    freqs_df = pd.read_csv('results/freqs.csv')
-    normalized = []
-    for index, row in senti_df.iterrows():
-        kw = row['word']
-        epoch = row['epoch']
-        senti = row['value']
-        freq = freqs_df[(freqs_df['word'] == kw) & (freqs_df['epoch'] == epoch)]['pMW'].iloc[0]
-        normalized.append(senti/freq)
-    senti_df['normalized_by_freq'] = normalized
-    senti_df.to_csv('data/results/senti_with_axis.csv')
 
 
 def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
