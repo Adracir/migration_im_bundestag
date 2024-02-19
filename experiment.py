@@ -7,17 +7,7 @@ import pandas as pd
 import numpy as np
 
 
-def prepared_corpus_to_wordlist(corpus_name):
-    corpus_unflattened = utils.unpickle(corpus_name)
-    # flatten corpus to one layered list
-    return [word for sent in corpus_unflattened for word in sent]
-
-
-def find_counts_for_keywords(count_dict):
-    keywords = utils.load_keywords()
-    return {k: count_dict.get(k, 0) for k in keywords}
-
-
+# Frequency
 def save_frequency_info_in_csv():
     output_file_path = 'results/freqs.csv'
     utils.write_info_to_csv(output_file_path, ['epoch', 'keyword', 'count', 'freq', 'pMW'])
@@ -34,6 +24,17 @@ def save_frequency_info_in_csv():
             # calculate frequency per million words
             pMW = freq * 1000000
             utils.write_info_to_csv(output_file_path, [epoch, kw, count, freq, pMW], 'a')
+
+
+def prepared_corpus_to_wordlist(corpus_name):
+    corpus_unflattened = utils.unpickle(corpus_name)
+    # flatten corpus to one layered list
+    return [word for sent in corpus_unflattened for word in sent]
+
+
+def find_counts_for_keywords(count_dict):
+    keywords = utils.load_keywords()
+    return {k: count_dict.get(k, 0) for k in keywords}
 
 
 def include_written_form_in_expected_csv(method):
@@ -73,7 +74,7 @@ def find_first_occurrences_for_keywords():
     # load freqs
     df = pd.read_csv('results/freqs.csv')
     output_file_path = "results/kw_occurrences.csv"
-    utils.write_info_to_csv(output_file_path, ['keyword', 'first_occ_epoch', 'last_occ_epoch',
+    utils.write_info_to_csv(output_file_path, ['keyword', 'ignore', 'first_occ_epoch', 'last_occ_epoch',
                                                                 'loophole'])
     # for each keyword find first & last non-null freq-epoch
     for kw in keywords:
@@ -88,10 +89,11 @@ def find_first_occurrences_for_keywords():
         for i in range(first_occ_epoch, last_occ_epoch+1):
             if i not in enough_occ_epochs:
                 loopholes.append(f'{i}')
-                print(f"WARNING: {kw} has a loophole at {i}")
-        # write into csv: keyword, first_occ_epoch, last_occ_epoch, loopholes
-        utils.write_info_to_csv(output_file_path, [kw, first_occ_epoch, last_occ_epoch,
-                                                                    '_'.join(loopholes) if len(loopholes) > 0 else 0], mode='a')
+        # ignore keyword if it does not occur at all
+        ignore = 1 if first_occ_epoch == last_occ_epoch == 0 and len(loopholes) == 1 and int(loopholes[0]) == 0 else 0
+        # write into csv: keyword, ignore, first_occ_epoch, last_occ_epoch, loopholes
+        utils.write_info_to_csv(output_file_path, [kw, ignore, first_occ_epoch, last_occ_epoch,
+                                                   '_'.join(loopholes) if len(loopholes) > 0 else 0], mode='a')
 
 
 def create_kw_occurrences_and_merge_to_keyword_list():
@@ -147,19 +149,7 @@ def get_freq_maxima_for_epochs():
     return dict(sorted(max_count_dict.items()))
 
 
-# adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
-def weat(w, A, B, word_vectors):
-    """Calculate bias score of attribute word w and two target sets A and B
-    :param w: attribute word
-    :param A: target set
-    :param B: other target set
-    :param word_vectors: keyedvectors to use"""
-    sim_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
-    sim_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
-    return np.mean(sim_wa) - np.mean(sim_wb)
-
-
-# TODO: alles zu with_axis rausnehmen?
+# Sentiment
 def analyse_senti_valuation_of_keywords(sentiword_set=""):
     print("preparing sentiment analysis")
     # load keywords
@@ -201,6 +191,18 @@ def analyse_senti_valuation_of_keywords(sentiword_set=""):
                     utils.write_info_to_csv(output_file_path,
                                             [kw, epoch, sentiword_set if sentiword_set else "standard", senti],
                                             mode="a")
+
+
+# adapted from https://github.com/leahannah/weat_demo/blob/main/weat.py
+def weat(w, A, B, word_vectors):
+    """Calculate bias score of attribute word w and two target sets A and B
+    :param w: attribute word
+    :param A: target set
+    :param B: other target set
+    :param word_vectors: keyedvectors to use"""
+    sim_wa = [word_vectors.similarity(w, a) for a in A if a in word_vectors.index_to_key]
+    sim_wb = [word_vectors.similarity(w, b) for b in B if b in word_vectors.index_to_key]
+    return np.mean(sim_wa) - np.mean(sim_wb)
 
 
 def make_senti_slices(sentiword_sets=['standard', 'political', 'combination']):
@@ -304,6 +306,7 @@ def get_senti_minima_for_epochs(sentiword_set='combination'):
     return min_count_dict
 
 
+# Word Associations
 def save_nearest_neighbors(aligned=False):
     if aligned:
         df = pd.read_csv('data/keywords_merged.csv')
@@ -423,3 +426,26 @@ def calculate_cosine_similarity_between_word_group(main_word, other_words, neces
             results[other_words.index(w)].append(val)
             # TODO: avoid that one list is only [None]?
     return results
+
+
+def print_contexts_for_word_from_lemmatized_corpus(word, epoch):
+    """
+    print all sentences in which a specific word appears in an epoch. This method can help understanding
+    the corpus better, find lemmatizing mistakes and explain possible results of the experiment
+    :param word: word to look for
+    :param epoch: number signifying an historical epoch defined in epochs.csv
+    :return: all sentences that contain the word (tokenized, lemmatized)
+    """
+    # find path to corpus
+    corpus_path = f'data/corpus/epoch{epoch}_prepared_lemma'
+    # unpickle corpus
+    corpus = utils.unpickle(corpus_path)
+    sents_containing_word = []
+    # search lists for word
+    for sent in corpus:
+        if word in sent:
+            sents_containing_word.append(sent)
+    print(f'{len(sents_containing_word)} Sätze mit Wort {word} gefunden:')
+    for s in sents_containing_word:
+        print(f'{sents_containing_word.index(s)}. {s}\n')
+    return sents_containing_word

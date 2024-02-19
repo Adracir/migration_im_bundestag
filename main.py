@@ -14,9 +14,9 @@ import numpy as np
 
 if __name__ == '__main__':
     '''epoch_id = 8'''
-    # unite text for epochs
+    # unite text for epochs. This process might take a while
     '''prepare_corpus.pure_text_to_epoch_txt(epoch_id)'''
-    # preprocess text and save this step
+    # preprocess text and save this step. This process might take a while
     '''data = prepare_corpus.prepare_text_for_embedding_training(f"data/corpus/epoch{epoch_id}.txt", lemmatize=True)
     utils.make_pickle(f"data/corpus/epoch{epoch_id}_prepared_lemma", data)'''
     # count frequencies and save in csv
@@ -49,8 +49,8 @@ if __name__ == '__main__':
         word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')
         print(f'epoch: {epoch_id}, vocabsize: {len(word_vectors)}')'''
     # analyse sentiment of words
-    '''for sentiword_set in ['', 'political', 'combination']:'''
-    '''experiment.analyse_senti_valuation_of_keywords(sentiword_set='combination')'''
+    '''for sentiword_set in ['', 'political', 'combination']:
+        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)'''
     # append expected.csv with written form to enable plotting
     '''experiment.include_written_form_in_expected_csv(method='senti')'''
     # save senti slices of senti results for plots
@@ -68,8 +68,8 @@ if __name__ == '__main__':
     '''prepare_corpus.print_contexts_for_word_from_lemmatized_corpus('Pap', 3)'''
     # align models to make visualization of nearest neighbors over time
     '''embeddings.align_according_to_occurrences()'''
-    # add some missing aligned model for epoch 8 for words "multikulturell" & "Migrationshintergrund".
-    #  manually checked if adding these would be valid for the resp. folders, following warnings from process before
+    # add some missing aligned models, following the warnings from process before
+    #  manually checked if adding these would be valid for the resp. folders
     '''embeddings.align_two_models(5, 6, 4)
     embeddings.align_two_models(6, 7, 4)
     embeddings.align_two_models(7, 8, 4)
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # save nearest neighbors from aligned models to csv
     '''experiment.save_nearest_neighbors(aligned=True)'''
     # TODO: compare nearest neighbors from plot with those from csv files
-    visualizations.plot_tsne_according_to_occurrences(words=['Asylant'], k=8, perplexity=5, keep_doubles=False, iterations=1000)
+    '''visualizations.plot_tsne_according_to_occurrences(words=['Asylant'], k=8, perplexity=5, keep_doubles=False, iterations=1000)'''
     # save distance for each keyword between the aligned epochs
     '''experiment.calculate_cosine_development_for_each_keyword()'''
     # plot these distances

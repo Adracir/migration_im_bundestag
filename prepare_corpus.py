@@ -4,8 +4,8 @@ import pandas as pd
 import re
 import datetime
 from nltk.tokenize import sent_tokenize
-import gensim.utils as gu  # musste erst über pip install gensim installiert werden!
-from HanTa import HanoverTagger as ht  # musste erst über pip install hanta installiert werden!
+import gensim.utils as gu
+from HanTa import HanoverTagger as ht
 
 import utils
 
@@ -161,26 +161,3 @@ def prepare_text_for_embedding_training(filepath, lemmatize=False):
             i = i + 1
             print(f'\rPrepared sent No. {i}', end="")
         return tokenized
-
-
-def print_contexts_for_word_from_lemmatized_corpus(word, epoch):
-    """
-    print all sentences in which a specific word appears in an epoch. This method can help understanding
-    the corpus better, find lemmatizing mistakes and explain possible results of the experiment
-    :param word: word to look for
-    :param epoch: number signifying an historical epoch defined in epochs.csv
-    :return: all sentences that contain the word (tokenized, lemmatized)
-    """
-    # find path to corpus
-    corpus_path = f'data/corpus/epoch{epoch}_prepared_lemma'
-    # unpickle corpus
-    corpus = utils.unpickle(corpus_path)
-    sents_containing_word = []
-    # search lists for word
-    for sent in corpus:
-        if word in sent:
-            sents_containing_word.append(sent)
-    print(f'{len(sents_containing_word)} Sätze mit Wort {word} gefunden:')
-    for s in sents_containing_word:
-        print(f'{sents_containing_word.index(s)}. {s}\n')
-    return sents_containing_word
