@@ -6,6 +6,8 @@ from scipy.stats import pearsonr, spearmanr
 import pandas as pd
 import numpy as np
 
+import utils
+
 
 # Embedding Training
 def make_word_emb_model(data, sg=1, vec_dim=100, window=5):
@@ -81,7 +83,7 @@ def align_according_to_occurrences():
             else:
                 os.makedirs(aligned_base_folder)
                 # iterate all needed models and align accordingly
-                necessary_epochs = [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
+                necessary_epochs = utils.get_necessary_epochs_for_kw(row)
                 print(f'aligning epochs {", ".join(map(str, necessary_epochs))}')
                 for epoch1 in necessary_epochs:
                     if epoch1 != necessary_epochs[-1]:

@@ -50,3 +50,16 @@ def get_epoch_written_form_short(epoch_id):
     """
     epochs_df = pd.read_csv('data/epochs.csv')
     return epochs_df[epochs_df['epoch_id'] == epoch_id]['written_form_short'].iloc[0]
+
+
+def get_necessary_epochs_for_kw(row=None, kw=None):
+    """
+    fetch epochs necessary to be analysed (as the keyword occurs at least 5 times)
+    :param row: respective row in keywords_merged.csv
+    :param kw: keyword to be analysed, if row is not given
+    :return: list of relevant epoch_ids
+    """
+    if kw:
+        df = pd.read_csv('data/keywords_merged.csv')
+        row = df[df['keyword'] == kw].iloc[0]
+    return [item for item in range(row.first_occ_epoch, row.last_occ_epoch + 1) if str(item) not in row.loophole]
