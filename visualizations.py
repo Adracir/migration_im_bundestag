@@ -25,14 +25,17 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
     freqs_df = pd.read_csv('results/freqs.csv')
     epochs_df = pd.read_csv('data/epochs.csv')
     keywords_df = pd.read_csv('data/keywords_merged.csv')
+    # initialize variables for expected value plotting
+    expected_df = None
+    written_expected = None
+    transformed_exp_values = None
     if include_expected:
         expected_df = pd.read_csv('data/expected_values.csv')
     keywords = keywords_df['keyword'].tolist()
     combine_groups = keywords_df['combine_group'].tolist()
     ignoring = keywords_df['ignore'].tolist()
     epochs = epochs_df['epoch_id'].tolist()
-    # TODO: Obacht! freqs and keywords and epochs should be at same status for this to work!
-    #  Maybe implement cleverer way
+    written_forms = epochs_df['written_form'].tolist()
     indices_done = []
     for i in range(len(keywords)):
         combine_group = combine_groups[i]
@@ -81,7 +84,6 @@ def plot_frequencies(include_expected=True, relative=False, show_result_groups=T
             path = f"results/plots/frequencies/freq_combined_{'_'.join(combined_kws)}" \
                    f"{'_res_groups' if show_result_groups else ''}{'_incl_exp' if include_expected else ''}" \
                    f"{'_abs_ref' if not relative else ('_rel_ref' if include_expected else '')}_plot.png"
-        written_forms = epochs_df['written_form'].tolist()  # TODO: assumes same order of epochs, maybe improve
         # title
         plt.title(title)
         # prepare axes
@@ -269,6 +271,9 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
     senti_df = pd.read_csv(f'results/senti.csv')
     senti_df_filtered = senti_df[senti_df['sentiword_set'].isin(sentiword_set_arr)]
     keywords_df = pd.read_csv('data/keywords_merged.csv')
+    expected_df = None
+    expected_transformed_values = None
+    written_expected = None
     if include_expected:
         expected_df = pd.read_csv('data/expected_values.csv')
     keywords = keywords_df['keyword'].tolist()
@@ -301,7 +306,8 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                                              expected_df['epoch'].isin(epochs)]
                 expected_values = expected_kw_df['expected_senti'].tolist()
                 written_expected = expected_kw_df['written_senti'].tolist()
-                expected_transformed_values = experiment.transform_expected_senti_values(expected_values, sentiword_set_arr[0])
+                expected_transformed_values = experiment.transform_expected_senti_values(expected_values,
+                                                                                         sentiword_set_arr[0])
             indices_done.append(i)
             title = f"Wertungen des Schlagwortes {kw} anhand WEAT"
             path = f'results/plots/senti/senti_{kw}_{"_".join(sentiword_set_arr)}_' \
@@ -332,7 +338,8 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
                                              expected_df['epoch'].isin(epochs)]
                 expected_values = expected_kw_df['expected_senti'].tolist()
                 written_expected = expected_kw_df['written_senti'].tolist()
-                expected_transformed_values = experiment.transform_expected_senti_values(expected_values, sentiword_set_arr[0])
+                expected_transformed_values = experiment.transform_expected_senti_values(expected_values,
+                                                                                         sentiword_set_arr[0])
             indices_done.extend(combine_group_indices)
             title = f"Wertungen der Schlagwörter {', '.join(combined_kws)} anhand WEAT"
             path = f'results/plots/senti/senti_combined_{"_".join(combined_kws)}_{"_".join(sentiword_set_arr)}_' \
@@ -373,10 +380,11 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
         for a in range(0, len(senti_values)):
             plt.plot(x, senti_values[a], f'{colors[a]}-',
                      label=f"WEAT-Wert nach Ausgangswörtern: "
-                           f"{sentiword_set_arr[a] if sentiword_set_arr[a] != 'combination' else 'political & standard'}")
+                           f"{sentiword_set_arr[a] if sentiword_set_arr[a]!='combination' else 'political & standard'}")
             # add labels to points
             for o, txt in enumerate(senti_values[a]):
-                plt.text(x[o], senti_values[a][o], f'{senti_values[a][o]:.2f}', color=colors[a], ha='center', va='bottom')
+                plt.text(x[o], senti_values[a][o], f'{senti_values[a][o]:.2f}', color=colors[a], ha='center',
+                         va='bottom')
         # plot red/green areas to give a hint on the dimensions
         min_val = min([min(val) for val in senti_values])
         max_val = max([max(val) for val in senti_values])
@@ -388,12 +396,14 @@ def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups
             senti_colors = np.concatenate([red_colors, np.array([[1.0, 1.0, 1.0, 1.0]]), green_colors])
             slice_info_df = pd.read_csv('results/expected_senti_results_slices.csv')
             all_exp_df = pd.read_csv('data/expected_senti_translation.csv')
-            slice_info_sw_set_df = slice_info_df[slice_info_df['sentiword_set'] == sentiword_set]
+            # get info for first senti word set in array
+            slice_info_sw_set_df = slice_info_df[slice_info_df['sentiword_set'] == sentiword_set_arr[0]]
             for senti_key in slice_info_sw_set_df['expected_senti_key'].tolist():
                 index = slice_info_sw_set_df['expected_senti_key'].tolist().index(senti_key)
-                max_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_max'].iloc[0]
-                min_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_min'].iloc[0]
-                mean_slice = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]['senti_mean'].iloc[0]
+                filtered_by_senti_key_df = slice_info_sw_set_df[slice_info_sw_set_df['expected_senti_key'] == senti_key]
+                max_slice = filtered_by_senti_key_df['senti_max'].iloc[0]
+                min_slice = filtered_by_senti_key_df['senti_min'].iloc[0]
+                mean_slice = filtered_by_senti_key_df['senti_mean'].iloc[0]
                 ax.axhspan(min_slice, max_slice, facecolor=senti_colors[index], alpha=0.35)
                 if min_y <= max_slice or max_y <= max_slice:
                     plt.text(0.1, mean_slice,
@@ -501,7 +511,8 @@ def plot_comparing_sentiments(sentiword_set="combination", show_result_groups=Tr
 
 def plot_mean_sentiments_for_keywords_as_bar_plot(sentiword_set='combination'):
     """
-    plot mean sentiment values over all epochs for the respective keywords as a bar plot. Gives an overview over the data.
+    plot mean sentiment values over all epochs for the respective keywords as a bar plot.
+    Gives an overview over the data.
     :return: (save bar plot in data/results/plots/senti)
     """
     results = experiment.calculate_mean_sentiment_over_all_epochs(sentiword_set)
@@ -516,8 +527,9 @@ def plot_mean_sentiments_for_keywords_as_bar_plot(sentiword_set='combination'):
                  color=f'{"black" if ranks[i] < 4 else "white"}')
     plt.axvline(0, color='black', linewidth=2)
     plt.ylabel("Schlagwörter")
-    plt.xlabel(f"Durchschnittlicher WEAT-Wert, "
-               f"{'Kombination: politisch + sentiment' if sentiword_set == 'combination' else ('politisch' if sentiword_set == 'political' else 'sentiment')}")
+    senti_word_info = 'Kombination: politisch + sentiment' if sentiword_set == 'combination' else \
+        ('politisch' if sentiword_set == 'political' else 'sentiment')
+    plt.xlabel(f"Durchschnittlicher WEAT-Wert, {senti_word_info}")
     plt.title("Durchschnittliche Wertungen der Schlagwörter über alle Epochen, \n1949-2023")
     plt.tight_layout()
     fig = plt.gcf()
@@ -687,7 +699,7 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
         results = experiment.calculate_cosine_similarity_between_word_group(main_word, other_words, necessary_epochs)
         # plot as many lines as other words
         title = f"Entwicklung im Verhältnis zum Schlagwort {main_word}"
-        path = f'results/plots/word_associations/comparing_old/comparing_development_{main_word}_' \
+        path = f'results/plots/word_associations/comparing/comparing_development_{main_word}_' \
                f'{"_".join(other_words)}_plot.png'
         filtered_epochs_df = epochs_df[epochs_df['epoch_id'].isin(necessary_epochs)]
         written_forms = filtered_epochs_df['written_form'].tolist()
@@ -699,7 +711,7 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
         ax.set_xlim(0, len(necessary_epochs))
         plt.xticks(x, written_forms)
         plt.xlabel("Epochen")
-        plt.ylabel(f"Cosine Similarity zum Wort {main_word}")
+        plt.ylabel(f"Kosinusähnlichkeit zum Wort {main_word}")
         plt.rc('grid', linestyle=':', color='black', linewidth=1)
         plt.grid(True)
         colors = ['r', 'b', 'g', 'y']
@@ -710,7 +722,8 @@ def plot_cosine_developments_of_word_groups(show_result_groups=True):
             for a, txt in enumerate(results[i]):
                 if results[i][a] is not None:
                     plt.text(x[a], results[i][a], f'{results[i][a]:.2f}', color=colors[i], ha='center', va='bottom')
-        max_val = max([max(value for value in sublist if value is not None) for sublist in results if sublist != [None]])
+        max_val = max([max(value for value in sublist if value is not None) for sublist in results
+                       if sublist != [None]])
         if show_result_groups:
             # plot blue areas to give a hint on the dimensions
             blue_colors = plt.cm.Blues(np.linspace(0.2, 0.9, 5))
@@ -763,7 +776,7 @@ def plot_nearest_neighbors_heatmap():
         # plot
         heatmap_data = np.array(all_similarities).transpose()
         plt.imshow(heatmap_data, cmap='OrRd', aspect='auto')
-        plt.colorbar(label='Cosine Similarity')
+        plt.colorbar(label='Kosinusähnlichkeit')
         written_epochs = [utils.get_epoch_written_form_short(epoch) for epoch in epochs]
         # plot grid
         for i in range(len(heatmap_data) + 1):

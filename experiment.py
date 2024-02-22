@@ -214,10 +214,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set='combination'):
                 # get associated wordvectors
                 word_vectors = KeyedVectors.load(f"data/models/base_models/epoch{epoch}_lemma_200d_7w_cbow.wordvectors")
                 # only analyze word if it is supposed to be in the vocab
-                # TODO: use necessary_epoch stuff?
-                if epoch in range(kw_keyword_df['first_occ_epoch'].iloc[0],
-                                  kw_keyword_df['last_occ_epoch'].iloc[0] + 1) \
-                        and str(epoch) not in kw_keyword_df['loophole'].iloc[0]:
+                if epoch in utils.get_necessary_epochs_for_kw(kw=kw):
                     # calculate bias value of word with WEAT method
                     senti = weat(kw, pos_words, neg_words, word_vectors)
                     # save value in csv
@@ -469,7 +466,6 @@ def calculate_cosine_similarity_between_word_group(main_word, other_words, neces
                 print(f"One of the words {main_word}, {w} does not exist in epoch {epoch}!")
                 val = None
             results[other_words.index(w)].append(val)
-            # TODO: avoid that one list is only [None]?
     return results
 
 

@@ -8,12 +8,12 @@ from gensim.models import KeyedVectors
 
 if __name__ == '__main__':
     # Corpus preprocessing
-    '''epoch_id = 8'''
+    epoch_id = 1
     # unite text for epochs. This process might take a while
     '''prepare_corpus.pure_text_to_epoch_txt(epoch_id)'''
     # preprocess text and save this step. This process might take a while
-    '''data = prepare_corpus.prepare_text_for_embedding_training(f"data/corpus/epoch{epoch_id}.txt", lemmatize=True)
-    utils.make_pickle(f"data/corpus/epoch{epoch_id}_prepared_lemma", data)'''
+    data = prepare_corpus.prepare_text_for_embedding_training(f"data/corpus/epoch{epoch_id}.txt", lemmatize=True)
+    utils.make_pickle(f"data/corpus/epoch{epoch_id}_prepared_lemma", data)
 
     # Frequency analysis (prerequisite: corpus preparation)
     # count frequencies and save in csv

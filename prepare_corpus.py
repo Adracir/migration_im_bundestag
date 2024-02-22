@@ -7,12 +7,7 @@ from nltk.tokenize import sent_tokenize
 import gensim.utils as gu
 from HanTa import HanoverTagger as ht
 
-import utils
-
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-SESSION_MARKERS_DIR = ROOT_DIR + '/data/session_markers.csv'
-EPOCHS_DIR = ROOT_DIR + '/data/epochs.csv'
-# TODO: apply the constants to other files as well or leave away here
 
 
 def extract_debate_text_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, epoch_ending_date):
@@ -26,7 +21,7 @@ def extract_debate_text_for_corpus_before_20th_ep(ep, session, epoch_beginning_d
     :return: text of the specified session
     """
     # find xml file for specific session in election period
-    file_path = f'{ROOT_DIR}/data/corpus/wp{ep}/{ep:02d}{session:003d}.xml'
+    file_path = f'data/corpus/wp{ep}/{ep:02d}{session:003d}.xml'
     if os.path.exists(file_path):
         # read xml
         data = ET.parse(file_path)
@@ -39,7 +34,7 @@ def extract_debate_text_for_corpus_before_20th_ep(ep, session, epoch_beginning_d
             text_tag = root.find('TEXT')
             text = ''.join(text_tag.itertext())
             # find session beginning and ending markers and extract only text inside
-            df = pd.read_csv(SESSION_MARKERS_DIR, sep=';')
+            df = pd.read_csv('data/session_markers.csv', sep=';')
             beginnings_df = df[df['type'] == 'beginning']
             beginnings = beginnings_df['text'].tolist()
             endings_df = df[df['type'] == 'ending']
@@ -75,7 +70,7 @@ def extract_debate_text_from_ep_20_xml(session):
     :param session: number of the parliamentary session
     :return: text of the specified session
     """
-    file_path = f'{ROOT_DIR}/data/corpus/wp20/20{session:003d}-data.xml'
+    file_path = f'data/corpus/wp20/20{session:003d}-data.xml'
     if os.path.exists(file_path):
         # read xml and find "sitzungsverlauf"-tag, containing the stenographic protocol
         data = ET.parse(file_path)
@@ -92,10 +87,10 @@ def pure_text_to_epoch_txt(epoch_id):
     :return: raw text for the whole epoch
     """
     # create txt file
-    txt_file_path = f'{ROOT_DIR}/data/corpus/epoch{epoch_id}.txt'
+    txt_file_path = f'data/corpus/epoch{epoch_id}.txt'
     text_to_add = ''
     # read necessary info from epochs.csv
-    df = pd.read_csv(EPOCHS_DIR)
+    df = pd.read_csv('data/epochs.csv')
     epoch_df = df[df['epoch_id'] == epoch_id]
     ep_start = epoch_df.ep_start.iloc[0]
     ep_end = epoch_df.ep_end.iloc[0]

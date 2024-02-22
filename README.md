@@ -5,10 +5,11 @@
 ### What is this work about?
 This work is performing an experiment on the Parliamentary Protocols of the Deutscher Bundestag and analyzing keywords 
 regarding migration with the use of Word2Vec word embeddings.
-Further information on the interpretation and theoretical background of this code can be found in the written thesis with the same title.
+Further information on the interpretation and theoretical background of this code can be found in the written thesis 
+with the same title (PDF file).
 
 ### How is the code structured? How can it be used?
-All necessary requirements to run the code can be installed using ```pip install -r requirements.txt```
+All necessary requirements to run the code can be installed using ```pip install -r requirements.txt```. 
 It is recommended to use Python Version ```3.10```.
 
 - ```main.py```: follow the workflow and call necessary methods from other files
