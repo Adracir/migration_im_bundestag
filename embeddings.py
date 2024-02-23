@@ -10,9 +10,9 @@ import utils
 
 
 # Embedding Training
-def make_word_emb_model(data, sg=1, vec_dim=100, window=5):
+def make_word_emb_model(data, sg=0, vec_dim=200, window=7):
     """
-    initialize and train a Word2Vec model with gensim from the given data
+    initialize and train a Word2Vec model from the given data using gensim
     :param data: nested list, containing tokenized words in tokenized sentences
     (as can be generated from raw text with prepare_corpus.prepare_text_for_embedding_training(filename))
     :param sg: if 0, method CBOW is used, if 1, Skipgram
@@ -57,28 +57,33 @@ def evaluate_embeddings(keyed_vectors, evaluation_set='222'):
 # Alignment
 def align_according_to_occurrences():
     """
-    check which alignments are needed according to the occurrences of the keywords and align the respective models
+    check which alignments are needed according to the occurrences of the keywords and align the respective models.
     can also be used to check if all needed aligned models are available
-    :return: (create folders giving the start & end epoch as well as loopholes, if an epoch should be skipped
+    :return: (create folders giving the start & end epoch as well as loopholes (epochs that should be skipped)
     and save the aligned models inside. Also print warnings if important alignments are missing)
     """
     # iterate rows in keywords_merged.csv
     df = pd.read_csv('data/keywords_merged.csv')
     for index, row in df.iterrows():
         # if word occurs never or only once, ignore
-        if row.first_occ_epoch != 0 and row.last_occ_epoch - (len(row.loophole.split('_')) if int(row.loophole) != 0 else 0) - row.first_occ_epoch > 0:
-            # check if resp. start_epoch-folder exists
-            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
+        if row.first_occ_epoch != 0 \
+                and (row.last_occ_epoch - (len(row.loophole.split('_')) if int(row.loophole) != 0 else 0) -
+                     row.first_occ_epoch) > 0:
+            # check if respective start_epoch-folder exists
+            aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}' \
+                                  f'{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
             if os.path.isdir(aligned_base_folder):
                 # check if it contains all (and only the) necessary models (iterate)
                 for epoch in range(row.first_occ_epoch, row.last_occ_epoch + 1):
                     epoch_aligned_model_path = f'{aligned_base_folder}/epoch{epoch}_lemma_200d_7w_cbow_aligned.model'
                     if str(epoch) not in row.loophole:
                         if not os.path.exists(epoch_aligned_model_path):
-                            print(f'WARNING: Epoch {epoch} missing in correct folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
+                            print(f'WARNING: Epoch {epoch} missing in correct folder {aligned_base_folder}! Keyword '
+                                  f'{row.keyword} cannot be evaluated')
                     else:
                         if os.path.exists(epoch_aligned_model_path):
-                            print(f'WARNING: Epoch {epoch} falsely existing in folder {aligned_base_folder}! Keyword {row.keyword} cannot be evaluated')
+                            print(f'WARNING: Epoch {epoch} falsely existing in folder {aligned_base_folder}! Keyword '
+                                  f'{row.keyword} cannot be evaluated')
             # if not existing, create new start_epoch-folder with evtl. resp. hole
             else:
                 os.makedirs(aligned_base_folder)
@@ -94,8 +99,8 @@ def align_according_to_occurrences():
 def align_two_models(epoch1, epoch2, start_epoch, loophole='0'):
     """
     align two models using smart procrustes algorithm
-    :param epoch1: first epoch, if not equal to start epoch, already aligned with the previous ones
-    :param epoch2: epoch to be aligned
+    :param epoch1: first epoch, already aligned with the previous ones if not equal to start epoch
+    :param epoch2: epoch to be aligned with the first epoch
     :param start_epoch: epoch in which the process had started, depending on occurrence of keyword that should be
     analyzed using these models
     :param loophole: epoch that should be skipped in the whole alignment process for the respective keyword
@@ -125,16 +130,17 @@ def align_two_models(epoch1, epoch2, start_epoch, loophole='0'):
 def smart_procrustes_align_gensim(base_embed, other_embed, words=None):
     """ Src: https://gist.github.com/zhicongchen/9e23d5c3f1e5b1293b16133485cd17d8
     Based on original script: https://gist.github.com/quadrismegistus/09a93e219a6ffc4f216fb85235535faf
-    Procrustes align two gensim word2vec models (to allow for comparison between same word across models).
+    Procrustes align two gensim Word2vec models (to allow for comparison between same word across models).
     Code ported from HistWords <https://github.com/williamleif/histwords> by William Hamilton <wleif@stanford.edu>.
 
     First, intersect the vocabularies (see `intersection_align_gensim` documentation).
     Then do the alignment on the other_embed model.
     Replace the other_embed model's syn0 and syn0norm numpy matrices with the aligned version.
     Return other_embed.
-    If `words` is set, intersect the two models' vocabulary with the vocabulary in words (see `intersection_align_gensim` documentation).
+    If `words` is set, intersect the two models' vocabulary with the vocabulary in words
+    (see `intersection_align_gensim` documentation).
     """
-    # patch by Richard So [https://twitter.com/richardjeanso) (thanks!) to update this code for new version of gensim
+    # patch by Richard So [https://twitter.com/richardjeanso) to update this code for new version of gensim
     # base_embed.init_sims(replace=True)
     # other_embed.init_sims(replace=True)
     # make sure vocabulary and indices are aligned

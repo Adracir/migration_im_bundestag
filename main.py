@@ -8,12 +8,12 @@ from gensim.models import KeyedVectors
 
 if __name__ == '__main__':
     # Corpus preprocessing
-    epoch_id = 1
+    '''epoch_id = 1'''
     # unite text for epochs. This process might take a while
     '''prepare_corpus.pure_text_to_epoch_txt(epoch_id)'''
     # preprocess text and save this step. This process might take a while
-    data = prepare_corpus.prepare_text_for_embedding_training(f"data/corpus/epoch{epoch_id}.txt", lemmatize=True)
-    utils.make_pickle(f"data/corpus/epoch{epoch_id}_prepared_lemma", data)
+    '''data = prepare_corpus.prepare_text_for_embedding_training(f"data/corpus/epoch{epoch_id}.txt", lemmatize=True)
+    utils.make_pickle(f"data/corpus/epoch{epoch_id}_prepared_lemma", data)'''
 
     # Frequency analysis (prerequisite: corpus preparation)
     # count frequencies and save in csv
@@ -36,20 +36,20 @@ if __name__ == '__main__':
     # use preprocessed text to train and save cbow models
     '''for epoch_id in range(1, 9):
         prepared_corpus = utils.unpickle(f"data/corpus/epoch{epoch_id}_prepared_lemma")
-        model = embeddings.make_word_emb_model(prepared_corpus, sg=0, vec_dim=200, window=7)
+        model = embeddings.make_word_emb_model(prepared_corpus)
         # save model
         print("Saving model")
         model.save(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.model')
         # save word vectors
         word_vectors = model.wv
         word_vectors.save(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')'''
-    # optional: evaluate models
+    # optional: evaluate the models' vocab sizes
     '''for epoch_id in range(1, 9):
         word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')
         print(f'epoch: {epoch_id}, vocabsize: {len(word_vectors)}')'''
-    # align models (necessary to make visualization of nearest neighbors over time)
+    # align models (necessary to make tsne visualization of nearest neighbors over time)
     '''embeddings.align_according_to_occurrences()'''
-    # add some missing aligned models, following the warnings from process before
+    # add some missing aligned models, following the warnings from process before.
     #  manually checked if adding these would be valid for the resp. folders
     '''embeddings.align_two_models(5, 6, 4)
     embeddings.align_two_models(6, 7, 4)
@@ -58,8 +58,8 @@ if __name__ == '__main__':
 
     # Sentiment analysis with WEAT (prerequisite: embedding training)
     # analyse sentiment of words
-    '''for sentiword_set in ['', 'political', 'combination']:
-        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)'''
+    for sentiword_set in ['', 'political', 'combination']:
+        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)
     # append expected.csv with written form to enable plotting
     '''experiment.include_written_form_in_expected_csv(method='senti')'''
     # save senti slices of senti results for plots

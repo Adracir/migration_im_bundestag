@@ -1,10 +1,10 @@
 import experiment
 import utils
-from sklearn.manifold import TSNE  # needed to be installed
+from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns  # needed to be installed
+import seaborn as sns
 from matplotlib import collections as mc
 import os
 import math
@@ -13,13 +13,15 @@ import math
 # Frequency methods
 def plot_frequencies(include_expected=True, relative=False, show_result_groups=True):
     """
-    plot frequency values that have been calculated and saved in csv with experiment.analyse_frequency_of_keywords
+    plot frequency values that have been calculated and saved in csv with experiment.analyse_frequency_of_keywords.
+    also automatically combine multiple written forms of one keyword into one plot, if the need is expressed in
+    keywords_merged.csv file (e.g. for 'Asylmissbrauch' and 'Asylmißbrauch')
     :param include_expected: True if the expected values should be plotted as a reference
     :param relative: True if expected values should be plotted as relative to the values of the word only,
     False if all frequency values (grouped into 8 slices) should be taken as a reference
     experiment.make_freq_slices should have been executed as a prerequisite if False
-    :param show_result_groups: True if colors in the background should indicate the groups of values (high/low).
-    experiment.make_freq_slices should have been executed as a prerequisite
+    :param show_result_groups: True if colors in the background should indicate the groups of values.
+    experiment.make_freq_slices needs to be executed as a prerequisite
     :return: (save line plots in data/results/plots/frequencies)
     """
     freqs_df = pd.read_csv('results/freqs.csv')
@@ -145,7 +147,7 @@ def plot_comparing_frequencies(show_result_groups=True):
     """
         plot frequency values of multiple words to enable comparing them. Values have been calculated and saved in csv
         in experiment.analyse_frequency_of_keywords
-        :param show_result_groups: True if colors in the background should indicate the groups of values (high/low).
+        :param show_result_groups: True if colors in the background should indicate the groups of values.
         experiment.make_freq_slices should have been executed as a prerequisite
         :return: (save line plots in data/results/plots/frequencies)
     """
@@ -260,7 +262,9 @@ def plot_frequency_maxima_for_epochs_as_bar_plot():
 def plot_sentiments(sentiword_set_arr, include_expected=True, show_result_groups=True):
     """
     plot WEAT sentiment values that have been calculated and saved in csv in
-    experiment.analyse_senti_valuation_of_keywords
+    experiment.analyse_senti_valuation_of_keywords as a line plot
+    also automatically combine multiple written forms of one keyword into one plot, if the need is expressed in
+    keywords_merged.csv file (e.g. for 'Asylmissbrauch' and 'Asylmißbrauch')
     :param sentiword_set_arr: one or more of 'political', 'standard' and 'combination' (comprising the mean of the two
     previous)
     :param include_expected: True if the expected values should be plotted as a reference

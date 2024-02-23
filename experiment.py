@@ -10,19 +10,24 @@ import numpy as np
 # Frequency
 def analyse_frequency_of_keywords():
     """
-    calculate relative and absolute frequency of each keyword in each epoch (lemmatized corpus)
+    calculate relative and absolute frequency of each keyword in each epoch (using the lemmatized corpus)
     :return: (save to csv file in results folder)
     """
+    # prepare output file
     output_file_path = 'results/freqs.csv'
     utils.write_info_to_csv(output_file_path, ['epoch', 'keyword', 'count', 'freq', 'pMW'])
+    keywords = utils.load_keywords()
     for epoch in range(1, 9):
         print(f'epoch {epoch}: simplifying corpus for counting operations')
         # flatten prepared corpus to a word list
         wordlist = prepared_corpus_to_wordlist(f"data/corpus/epoch{epoch}_prepared_lemma")
+        # initialize counter on the whole wordlist
         counter = Counter(wordlist)
-        count_dict = find_counts_for_keywords(counter)
+        # fetch the counts for the list of keywords
+        count_dict = {k: counter.get(k, 0) for k in keywords}
         total_words = len(wordlist)
         print('iterating keywords and saving information')
+        # calculate and save relevant information
         for kw in count_dict.keys():
             count = count_dict[kw]
             # relative frequency
@@ -43,14 +48,16 @@ def prepared_corpus_to_wordlist(corpus_path):
     return [word for sent in corpus_unflattened for word in sent]
 
 
-def find_counts_for_keywords(count_dict):
+def create_kw_occurrences_and_merge_to_keyword_list():
     """
-    uses an existing counter to fetch the counts of a list of keywords
-    :param count_dict: Counter of a corpus word list
-    :return: dictionary containing the count of each keyword
+    create one csv file containing all important information on the keywords after frequency has been calculated
+    :return: (save csv file in data folder)
     """
-    keywords = utils.load_keywords()
-    return {k: count_dict.get(k, 0) for k in keywords}
+    find_first_occurrences_for_keywords()
+    df1 = pd.read_csv('data/keywords.csv')
+    df2 = pd.read_csv('results/kw_occurrences.csv')
+    merged_df = df1.merge(df2, on='keyword', how='outer')
+    merged_df.to_csv('data/keywords_merged.csv', index=False)
 
 
 def find_first_occurrences_for_keywords():
@@ -85,21 +92,9 @@ def find_first_occurrences_for_keywords():
                                                    '_'.join(loopholes) if len(loopholes) > 0 else 0], mode='a')
 
 
-def create_kw_occurrences_and_merge_to_keyword_list():
-    """
-    create one csv file containing all important information on the keywords
-    :return: (save csv file in data folder)
-    """
-    find_first_occurrences_for_keywords()
-    df1 = pd.read_csv('data/keywords.csv')
-    df2 = pd.read_csv('results/kw_occurrences.csv')
-    merged_df = df1.merge(df2, on='keyword', how='outer')
-    merged_df.to_csv('data/keywords_merged.csv', index=False)
-
-
 def make_freq_slices():
     """
-    divide calculated freq values into 8 equally sized groups, used for interpretation
+    divide calculated freq values into 8 equally sized groups, used for interpretation & visualization
     :return: (save borders of the groups in a csv file in results folder)
     """
     freqs_df = pd.read_csv('results/freqs.csv')
@@ -111,6 +106,7 @@ def make_freq_slices():
     # guarantee smooth transitions without noticeable gaps
     for i in range(len(slices) - 1):
         slices[i][-1] = slices[i + 1][0] - 0.0001
+    # save mean, max and min pMW values for each slice
     data = {'expected_freq_key': range(1, 9),
             'pMW_mean': [np.mean(s) for s in slices],
             'pMW_max': [max(s) for s in slices],
@@ -195,7 +191,7 @@ def analyse_senti_valuation_of_keywords(sentiword_set='combination'):
     else:
         senti_file_path = f"data/{sentiword_set}{'_' if sentiword_set else ''}sentiwords.csv"
         df = pd.read_csv(senti_file_path)
-    # group sentiwords by value (A: +1/B: -1)
+    # group sentiwords by value (positive: +1/negative: -1)
     df_pos = df[df["value"] == 1]
     df_neg = df[df["value"] == -1]
     pos_words = df_pos["word"].tolist()
@@ -230,16 +226,21 @@ def weat(keyword, positive_set, negative_set, word_vectors):
     :param positive_set: list of positive words
     :param negative_set: list of negative words
     :param word_vectors: Keyedvectors to use"""
+    # calculate similarity between the keyword and each word in the positive word list (if the resp. word is contained
+    # in the KeyedVectors' vocab)
     similarity_positive = [word_vectors.similarity(keyword, ref_word) for ref_word in positive_set
                            if ref_word in word_vectors.index_to_key]
+    # same for the negative word list
     similarity_negative = [word_vectors.similarity(keyword, ref_word) for ref_word in negative_set
                            if ref_word in word_vectors.index_to_key]
+    # return the difference between the two mean similarities:
+    # > 0 indicates a higher association of the keyword with the positive set, < 0 with the negative
     return np.mean(similarity_positive) - np.mean(similarity_negative)
 
 
 def make_senti_slices(sentiword_sets='all'):
     """
-    divide calculated senti values into 9 equally sized groups, used for interpretation.
+    divide calculated senti values into 9 equally sized groups, used for interpretation & visualization.
     the values of the bigger amount of values (<0 or >0) are used as reference values and symmetry is kept
     :return: (save borders of the groups in a csv file in results folder)
     """
@@ -320,7 +321,7 @@ def calculate_mean_sentiment_over_all_epochs(sentiword_set='combination'):
 def get_senti_minima_for_epochs(sentiword_set='combination'):
     """
     count amount of keywords that have their minimum sentiment value in a specific epoch
-    :param sentiword_set:  'standard' for standard sentiment word set, 'political' for political word set or
+    :param sentiword_set: 'standard' for standard sentiment word set, 'political' for political word set or
     'combination' for using both sets together
     :return: sorted dictionary with the minima count per epoch
     """
@@ -436,7 +437,7 @@ def calculate_sum_nearest_neighbors_per_keyword(aligned=False):
                 else:
                     new_word_object = {'word': word, 'similarity': sim}
                     neighbors.append(new_word_object)
-        # sort the aggregated neighbors by similarity
+        # sort the aggregated neighbors by similarity sum over all epochs
         sorted_neighbors = sorted(neighbors, key=lambda d: d['similarity'], reverse=True)
         output_list = [item for sublist in ([word['word'], word['similarity']] for word in sorted_neighbors[:20])
                        for item in sublist]

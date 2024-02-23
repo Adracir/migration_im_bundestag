@@ -25,7 +25,7 @@ cleaned and sorted by time epochs needed for the experiment)
   - ```corpus```
     1. plenary protocols as xml files downloaded from https://www.bundestag.de/services/opendata, structured by folders per 
     election period (```wp1```-```wp20```). Omitted in GitHub version, only example file contained in official version.
-    2. epochs 1-8 plain debate text extracted as txt files (```epoch<1-8>.txt```)
+    2. plain debate text for epochs 1-8 extracted as txt files (```epoch<1-8>.txt```)
     3. prepared text as pickled nested lists, ready for embedding training (```epoch<1-8>_prepared_lemma```)
   - ```evaluation``` (omitted in GitHub version)
     - word pairs for embedding evaluation, downloaded from Gurevych (2005)
@@ -37,36 +37,33 @@ cleaned and sorted by time epochs needed for the experiment)
   - ```session_markers.csv```: regular expressions used to distinguish debate text from additional information in the 
   plenary protocol files before election period 20
   - ```epochs.csv```: list of epochs with their time range and written forms
-  - ```keywords.csv```: contains all keywords that can be analyzed in this experiment, including info on combinations of 
+  - ```keywords.csv```: all keywords to be analyzed in this experiment, including info on combinations of 
   different written forms (e.g. "Asylmissbrauch" and "Asylmißbrauch")
-  - ```keywords_merged.csv```: contains all keywords, see above, plus information on their occurrences (only available 
+  - ```keywords_merged.csv```: all keywords, see above, plus information on their occurrences (only available 
   after frequency analysis)
-  - ```keyword_comparing.csv```: groups keywords together that can be interesting to be analyzed in comparison to each 
-  other
-  - ```expected_values.csv```: stores information on which frequencies and sentiment values are expected for each 
-  keyword and epoch
-  - ```expected_freq_translation.csv```: groups expected frequency symbols (1-8) with their written forms 
-  (häufig, selten ecc.)
+  - ```keyword_comparing.csv```: keywords groups to be analyzed in comparison with each other
+  - ```expected_values.csv```: expected frequency and sentiment values for each keyword in each epoch
+  - ```expected_freq_translation.csv```: expected frequency symbols (1-8) with their written forms 
+  ('häufig', 'selten' ecc.)
   - ```expected_senti_translation.csv```: same for expected sentiment symbols (-1, 0.25, o+, ...) and their written 
-  forms (sehr negativ, positiv, ...)
+  forms ('sehr negativ', 'positiv', ...)
   - ```political_sentiwords.csv```: sentiment wordset used for the WEAT test, containing political words 
   from Walter et al. (2021)
   - ```sentiwords.csv```: basic sentiment wordset from Walter et al. (2021)
 - ```results``` folder:
-  - ```plots``` contains all visualizations of the calculated data on frequency, sentiment and word association level 
+  - ```plots``` folder: all visualizations of the calculated data on frequency, sentiment and word association level 
   - ```freqs.csv```: the measured frequency of each keyword in each epoch, total count and relative pMW value
-  - ```expected_freq_results_slices.csv```: groups the frequency values into 8 slices that contain an equal amount of 
-  measured values, giving a comparison frame for the data
-  - ```kw_occurrences.csv```: for each keyword, when does it first and last occur? are epochs skipped? This info is 
-  combined with ```keywords.csv``` to ```keywords_merged.csv``` and useful in many places
-  - ```senti.csv```: for each keyword in each epoch for each different sentiword base set: WEAT values
-  - ```expected_senti_results_slices.csv```: groups the sentiment values into 9 slices, giving a comparison frame for 
+  - ```expected_freq_results_slices.csv```: 8 equally large groups of the frequency values, giving a comparison frame 
+  - for the data
+  - ```kw_occurrences.csv```: info on occurrence (count > 4) of each keyword (first epoch, last epoch, skipped epochs).
+  combined with ```keywords.csv``` to ```keywords_merged.csv``` 
+  - ```senti.csv```: WEAT values for each keyword in each epoch for each different sentiword base set
+  - ```expected_senti_results_slices.csv```: 9 groups of the sentiment values, giving a comparison frame for 
   the data  
-  - ```nearest_neighbors.csv```: for each keyword in each epoch: the ten most similar words. (models not aligned)
-  - ```nearest_neighbors_aligned.csv```: the same as above, but using the aligned models
-  - ```aggregated_nearest_neighbors.csv```: contains 20 most similar words over all epochs for each keyword, including 
-  their cosine similarity (taking the sum if a word appears in more than one epoch). 
-  Retrieved using nearest_neighbors.csv
+  - ```nearest_neighbors.csv```: the ten most cosine-similar words for each keyword in each epoch. (models not aligned)
+  - ```nearest_neighbors_aligned.csv```: same as above, but using the aligned models
+  - ```aggregated_nearest_neighbors.csv```: 20 most cosine-similar words, taking the sum over all epochs for 
+  each keyword, including. Retrieved using nearest_neighbors.csv
 
 ### Literature
 - Gurevych, I. (2005). German Relatedness Datasets [dataset]. 

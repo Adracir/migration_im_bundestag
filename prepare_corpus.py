@@ -10,10 +10,58 @@ from HanTa import HanoverTagger as ht
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def pure_text_to_epoch_txt(epoch_id):
+    """
+    create corpus base by extracting text from the different xml files and writing it to txt file for the resp. epoch
+    :param epoch_id: number (1-8) signifying an historical epoch defined in epochs.csv
+    :return: raw text for the whole epoch, also save to txt file in data/corpus folder
+    """
+    # create output txt file
+    txt_file_path = f'data/corpus/epoch{epoch_id}.txt'
+    text_to_add = ''
+    # read necessary info from epochs.csv
+    df = pd.read_csv('data/epochs.csv')
+    epoch_df = df[df['epoch_id'] == epoch_id]
+    # election periods containing the epoch texts
+    ep_start = epoch_df.ep_start.iloc[0]
+    ep_end = epoch_df.ep_end.iloc[0]
+    # date range containing the epoch texts
+    epoch_beginning_date = datetime.datetime.strptime(epoch_df.epoch_beginning_date.iloc[0], '%d.%m.%Y')
+    epoch_ending_date = datetime.datetime.strptime(epoch_df.epoch_ending_date.iloc[0], '%d.%m.%Y')
+    if epoch_id != 8:
+        # iterate needed election periods
+        for ep in range(ep_start, ep_end + 1):
+            # iterate all files in the respective folders
+            for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp{ep}'))+1):
+                session_text = extract_debate_text_for_corpus_before_20th_ep(ep, i, epoch_beginning_date,
+                                                                             epoch_ending_date)
+                if session_text:
+                    text_to_add = " ".join([text_to_add, session_text])
+                else:
+                    break
+    else:
+        # in case of epoch 8, the texts come from election period 19 and 20 and thus, have to be extracted in different
+        # ways
+        for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp19')) + 1):
+            # check for dates
+            session_text = extract_debate_text_for_corpus_before_20th_ep(19, i, epoch_beginning_date, epoch_ending_date)
+            if session_text:
+                text_to_add = " ".join([text_to_add, session_text])
+            else:
+                break
+        for a in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp20')) + 1):
+            session_text = extract_debate_text_from_ep_20_xml(a)
+            text_to_add = " ".join([text_to_add, session_text])
+    # save text to txt file for epoch
+    with open(txt_file_path, 'w', encoding="utf-8") as text_file:
+        text_file.write(text_to_add)
+    return text_to_add
+
+
 def extract_debate_text_for_corpus_before_20th_ep(ep, session, epoch_beginning_date, epoch_ending_date):
     """
-    extract transcript of spoken text in parliamentary debate from xml file downloaded from
-    https://www.bundestag.de/services/opendata
+    extract transcript of spoken text in parliamentary debate (omitting meta information ecc.) from xml file downloaded
+    from https://www.bundestag.de/services/opendata and stored in folders for each election period called wp1-wp20
     :param ep: election period
     :param session: number of the parliamentary session
     :param epoch_beginning_date: beginning date for the epoch (50s, 60s, 70s...) to filter
@@ -59,14 +107,16 @@ def extract_debate_text_for_corpus_before_20th_ep(ep, session, epoch_beginning_d
                 print(f"NO ENDING FOUND FOR EP {ep} SESSION {session}")
             return text
         else:
+            # if the detected date of the session is not in the specified range, no text is returned and the loop
+            # reading data from files will be stopped
             return
 
 
 def extract_debate_text_from_ep_20_xml(session):
     """
     extract transcript of spoken text in parliamentary debate in 20th election period from xml file downloaded from
-    https://www.bundestag.de/services/opendata
-    these xml files are structured following TEI standards and thus, require
+    https://www.bundestag.de/services/opendata.
+    the xml files from election period 20 are structured following TEI standards and thus, easier to process
     :param session: number of the parliamentary session
     :return: text of the specified session
     """
@@ -80,63 +130,24 @@ def extract_debate_text_from_ep_20_xml(session):
         return text
 
 
-def pure_text_to_epoch_txt(epoch_id):
-    """
-    create corpus base by extracting text from the different xml files and writing it to txt file for the resp. epoch
-    :param epoch_id: number signifying an historical epoch defined in epochs.csv
-    :return: raw text for the whole epoch
-    """
-    # create txt file
-    txt_file_path = f'data/corpus/epoch{epoch_id}.txt'
-    text_to_add = ''
-    # read necessary info from epochs.csv
-    df = pd.read_csv('data/epochs.csv')
-    epoch_df = df[df['epoch_id'] == epoch_id]
-    ep_start = epoch_df.ep_start.iloc[0]
-    ep_end = epoch_df.ep_end.iloc[0]
-    epoch_beginning_date = datetime.datetime.strptime(epoch_df.epoch_beginning_date.iloc[0], '%d.%m.%Y')
-    epoch_ending_date = datetime.datetime.strptime(epoch_df.epoch_ending_date.iloc[0], '%d.%m.%Y')
-    if epoch_id != 8:
-        for ep in range(ep_start, ep_end + 1):
-            for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp{ep}'))+1):
-                session_text = extract_debate_text_for_corpus_before_20th_ep(ep, i, epoch_beginning_date, epoch_ending_date)
-                if session_text:
-                    text_to_add = " ".join([text_to_add, session_text])
-                else:
-                    break
-    else:
-        for i in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp19')) + 1):
-            # check for dates
-            session_text = extract_debate_text_for_corpus_before_20th_ep(19, i, epoch_beginning_date, epoch_ending_date)
-            if session_text:
-                text_to_add = " ".join([text_to_add, session_text])
-            else:
-                break
-        for a in range(1, len(os.listdir(f'{ROOT_DIR}/data/corpus/wp20')) + 1):
-            session_text = extract_debate_text_from_ep_20_xml(a)
-            text_to_add = " ".join([text_to_add, session_text])
-    with open(txt_file_path, 'w', encoding="utf-8") as text_file:
-        text_file.write(text_to_add)
-    return text_to_add
-
-
 def prepare_text_for_embedding_training(filepath, lemmatize=False):
     """
-    take a txt file with only the necessary text and prepares it for the generation of word embeddings by performing
+    take a txt file with the text for an epoch and prepare it for the generation of word embeddings by performing
     the following steps:
     - read the file
     - tokenize by sentences
     - unite words split by a newline character
-    - tokenize per words
+    - tokenize by words
     - optionally lemmatize each word
     :param filepath: filepath of the txt file
-    :param lemmatize: boolean to decide whether the words should be lemmatized or not
+    :param lemmatize: whether the words should be lemmatized or not
     :return: nested list of sentences with words/lemmas
     """
     print('...starting to prepare text...')
     with open(filepath, encoding='utf8') as file:
         s = file.read()
         tokenized = []
+        # tokenize sentences using nltk
         sents = sent_tokenize(s, language="german")
         print(f'{len(sents)} sents extracted')
         i = 0
@@ -144,9 +155,9 @@ def prepare_text_for_embedding_training(filepath, lemmatize=False):
         for sent in sents:
             # first unite words split by line breaks
             sent = sent.replace('-\n', '')
-            # code copied from gu.simple_preprocess, only difference: lowercasing not done,
-            # as the cases might encode important semantic information in German language
-            # also includes optional lemmatization using hanover lemmatizer
+            # code copied from gu.simple_preprocess, differences:
+            # - lowercasing not done, as the cases might encode important semantic information in German language
+            # - includes optional lemmatization using hanover lemmatizer
             tokens = [
                 hanover.analyze(token)[0] if lemmatize
                 else token for token in gu.tokenize(sent, lower=False, deacc=False, errors='ignore')
