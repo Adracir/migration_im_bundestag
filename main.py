@@ -58,8 +58,8 @@ if __name__ == '__main__':
 
     # Sentiment analysis with WEAT (prerequisite: embedding training)
     # analyse sentiment of words
-    for sentiword_set in ['', 'political', 'combination']:
-        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)
+    '''for sentiword_set in ['', 'political', 'combination']:
+        experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)'''
     # append expected.csv with written form to enable plotting
     '''experiment.include_written_form_in_expected_csv(method='senti')'''
     # save senti slices of senti results for plots
@@ -77,8 +77,8 @@ if __name__ == '__main__':
     '''experiment.analyse_word_associations(aligned=True)'''
     # save aggregated nearest neighbors for each keyword
     '''experiment.calculate_sum_nearest_neighbors_per_keyword()'''
-    # possibility to analyse some words more closely, see their context in the corpus
-    '''experiment.print_contexts_for_word_from_lemmatized_corpus('Pap', 3)'''
+    # possibility to analyse some words more closely, see their context in the corpus (of a specific epoch)
+    '''experiment.print_contexts_for_word_from_lemmatized_corpus('Vertriebene', 1)'''
     # plot aligned nearest neighbors as tsne plot
     '''visualizations.plot_tsne_according_to_occurrences(words=['Asylant'], k=8, perplexity=5, keep_doubles=False, 
                                                       iterations=1000)'''
