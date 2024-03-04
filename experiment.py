@@ -112,7 +112,7 @@ def make_freq_slices():
             'pMW_max': [max(s) for s in slices],
             'pMW_min': [min(s) for s in slices]}
     df = pd.DataFrame(data)
-    df.to_csv('data/results/expected_freq_results_slices.csv', index=False)
+    df.to_csv('results/expected_freq_results_slices.csv', index=False)
 
 
 def calculate_mean_frequency_for_keywords():
@@ -293,7 +293,7 @@ def make_senti_slices(sentiword_sets='all'):
     data = {'expected_senti_key': expected_senti_keys, 'senti_mean': senti_mean, 'senti_max': senti_max,
             'senti_min': senti_min, 'sentiword_set': sentiword_set_list}
     df = pd.DataFrame(data)
-    df.to_csv('data/results/expected_senti_results_slices.csv', index=False)
+    df.to_csv('results/expected_senti_results_slices.csv', index=False)
 
 
 def calculate_mean_sentiment_over_all_epochs(sentiword_set='combination'):

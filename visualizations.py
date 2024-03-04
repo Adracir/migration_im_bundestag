@@ -581,7 +581,7 @@ def plot_tsne_according_to_occurrences(words='all', k=15, perplexity=30, keep_do
             aligned_base_folder = f'data/models/aligned_models/start_epoch_{row.first_occ_epoch}' \
                                   f'{f"_lh_{row.loophole}" if not str(0) in row.loophole else ""}'
             if os.path.isdir(aligned_base_folder):
-                necessary_epochs = utils.get_necessary_epochs_for_kw()
+                necessary_epochs = utils.get_necessary_epochs_for_kw(row)
                 # plot words with more than one epoch only
                 if len(necessary_epochs) > 1:
                     # show more or less words depending on the amount of epochs

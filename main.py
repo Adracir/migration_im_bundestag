@@ -20,7 +20,7 @@ if __name__ == '__main__':
     '''experiment.analyse_frequency_of_keywords()'''
     # analyze first occurrences of keywords and save in keywords_merged.csv
     '''experiment.create_kw_occurrences_and_merge_to_keyword_list()'''
-    # append expected_values.csv with written form to enable plotting
+    # (append expected_values.csv with written form to enable plotting (only necessary, if they are not yet included))
     '''experiment.include_written_form_in_expected_csv(method='freq')'''
     # save pMW slices of freqs results to enable comparing with "freq classes"
     '''experiment.make_freq_slices()'''
@@ -43,9 +43,10 @@ if __name__ == '__main__':
         # save word vectors
         word_vectors = model.wv
         word_vectors.save(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')'''
-    # optional: evaluate the models' vocab sizes
+    # optional: evaluate the models with Gurevych's word pairs and vocab sizes
     '''for epoch_id in range(1, 9):
         word_vectors = KeyedVectors.load(f'data/models/base_models/epoch{epoch_id}_lemma_200d_7w_cbow.wordvectors')
+        embeddings.evaluate_embeddings(word_vectors)
         print(f'epoch: {epoch_id}, vocabsize: {len(word_vectors)}')'''
     # align models (necessary to make tsne visualization of nearest neighbors over time)
     '''embeddings.align_according_to_occurrences()'''
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     # analyse sentiment of words
     '''for sentiword_set in ['', 'political', 'combination']:
         experiment.analyse_senti_valuation_of_keywords(sentiword_set=sentiword_set)'''
-    # append expected.csv with written form to enable plotting
+    # (append expected_values.csv with written form to enable plotting (only necessary, if they are not yet included))
     '''experiment.include_written_form_in_expected_csv(method='senti')'''
     # save senti slices of senti results for plots
     '''experiment.make_senti_slices()'''
